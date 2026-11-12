@@ -115,6 +115,8 @@ struct pml_ucx_persistent_request {
     struct {
         ucp_tag_t                     tag_mask;
     } recv;
+    int                               ev_peer;   /* destination / source and MPI tag, for the MPI_T events */
+    int                               ev_tag;
 };
 
 
@@ -283,6 +285,45 @@ static inline void mca_pml_ucx_event_start(int which, ompi_communicator_t *comm,
     }
     ompi_datatype_type_size(datatype, &size);
     mca_pml_base_event_raise_start(which, comm, req, peer, tag, size * count, flags);
+}
+
+/* persistent requests: start and completion of one activation; the token is the request the user holds */
+static inline void mca_pml_ucx_event_preq_start(mca_pml_ucx_persistent_request_t *preq)
+{
+    int is_send = (preq->flags & MCA_PML_UCX_REQUEST_FLAG_SEND) ? 1 : 0;
+    int which = is_send ? MCA_PML_BASE_EVENT_SEND_START : MCA_PML_BASE_EVENT_RECV_START;
+
+    mca_pml_ucx_event_start(which, preq->ompi.req_mpi_object.comm, &preq->ompi, preq->ev_peer, preq->ev_tag,
+                            preq->count, preq->ompi_datatype,
+                            MCA_PML_BASE_EVENT_FLAG_PERSISTENT
+                                | (is_send ? mca_pml_ucx_event_mode_flags(preq->send.mode) : 0));
+}
+
+static inline void mca_pml_ucx_event_preq_complete(mca_pml_ucx_persistent_request_t *preq,
+                                                   const ompi_status_public_t *st)
+{
+    size_t size = 0;
+    int flags = 0;
+
+    if (preq->flags & MCA_PML_UCX_REQUEST_FLAG_SEND) {
+        if (OPAL_LIKELY(!mca_pml_base_event_wanted(MCA_PML_BASE_EVENT_SEND_COMPLETE))) {
+            return;
+        }
+        ompi_datatype_type_size(preq->ompi_datatype, &size);
+        mca_pml_base_event_raise_complete(MCA_PML_BASE_EVENT_SEND_COMPLETE, preq->ompi.req_mpi_object.comm,
+                                          &preq->ompi, preq->ev_peer, preq->ev_tag, size * preq->count, 0);
+        return;
+    }
+    if (OPAL_LIKELY(!mca_pml_base_event_wanted(MCA_PML_BASE_EVENT_RECV_COMPLETE))) {
+        return;
+    }
+    if (MPI_ERR_TRUNCATE == st->MPI_ERROR) {
+        flags |= MCA_PML_BASE_EVENT_COMPLETE_TRUNCATED | MCA_PML_BASE_EVENT_COMPLETE_ERROR;
+    } else if (st->_cancelled) {
+        flags |= MCA_PML_BASE_EVENT_COMPLETE_CANCELLED;
+    }
+    mca_pml_base_event_raise_complete(MCA_PML_BASE_EVENT_RECV_COMPLETE, preq->ompi.req_mpi_object.comm,
+                                      &preq->ompi, st->MPI_SOURCE, st->MPI_TAG, st->_ucount, flags);
 }
 
 static inline void mca_pml_ucx_event_recv_complete(ompi_communicator_t *comm, const void *req,
