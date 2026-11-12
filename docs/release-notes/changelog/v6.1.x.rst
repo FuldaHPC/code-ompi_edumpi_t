@@ -349,3 +349,8 @@ Open MPI version v6.1.0
   which algorithm the ``tuned``, ``libnbc``, ``han``, ``basic``,
   ``adapt``, ``xhc``, ``acoll`` and ``ucc`` collective components chose for an operation, including the algorithms ``han``
   runs on its inter-node and intra-node helper communicators.
+
+- Added the MPI_T events ``ompi.mpi.request_activated`` and ``ompi.mpi.request_completed`` (kind collective for
+  non-blocking and persistent collectives of ``libnbc``), and the ``parent`` element of ``ompi.pml_send_start`` /
+  ``ompi.pml_recv_start`` now carries the collective request on whose behalf a message is sent, so that a tool can
+  attribute the internal messages of a non-blocking collective.

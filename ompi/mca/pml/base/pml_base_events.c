@@ -18,6 +18,7 @@
 #include "opal/mca/base/mca_base_var.h"
 
 mca_base_event_t *mca_pml_base_event[MCA_PML_BASE_EVENT_MAX];
+_Thread_local uint64_t mca_pml_base_event_parent = 0;
 
 /* Nanosecond ticks: the same "ompi" source the ob1 events and the MPI layer use
    (registration by name is idempotent). */

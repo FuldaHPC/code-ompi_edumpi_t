@@ -31,6 +31,7 @@
 #include "ompi_config.h"
 
 #include "coll_libnbc.h"
+#include "ompi/runtime/ompi_mpit_events.h"
 #include "nbc_internal.h"
 #include "ompi/mca/coll/base/base.h"
 
@@ -593,6 +594,8 @@ ompi_coll_libnbc_progress(void)
                     request->row_offset = 0;
                 }
                 if(!request->super.super.req_persistent || !REQUEST_COMPLETE(&request->super.super)) {
+                    ompi_mpit_raise_request_state(0, request->comm, request, OMPI_REQUEST_KIND_COLL,
+                                                  request->super.super.req_persistent ? OMPI_REQUEST_FLAG_PERSISTENT : 0);
             	    ompi_request_complete(&request->super.super, true);
                 }
                 completed++;

@@ -456,6 +456,18 @@ Collective algorithm event
    communicator and ``comm_size`` the size of the helper communicator. The ``han``
    decision itself has ``level`` 0.
 
+Request state events
+^^^^^^^^^^^^^^^^^^^^
+
+``ompi.mpi.request_activated``, ``ompi.mpi.request_completed``
+   Level 4, bound to a communicator. A request was activated, or completed (all its work is done; raised before
+   the request is completed towards the user). Payload (4 elements): ``request`` (``uint64``, the ``MPI_Request``
+   handle, valid from the activated to the completed event of one activation), ``comm`` (``uint64``), ``kind``
+   (``int32``: 0 point-to-point send, 1 point-to-point receive, 2 collective, 3 one-sided, 4 I/O, 5 generalized,
+   6 partitioned) and ``flags`` (``int32``, 0x1 persistent). Currently raised for non-blocking and persistent
+   collective requests of the ``libnbc`` component (kind 2); point-to-point requests report their envelope with the
+   events of the next section.
+
 Point-to-point events common to all PMLs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -465,7 +477,7 @@ of the user program and are raised by every PML that supports them (``ob1`` and
 ``ucx``). Every one is source ``ompi``, level 4, and bound to a communicator.
 
 ``ompi.pml_send_start``, ``ompi.pml_recv_start``
-   ``request`` (``uint64``), ``parent`` (``uint64``, reserved, 0), ``length``
+   ``request`` (``uint64``), ``parent`` (``uint64``, the token of the non-blocking collective request on whose behalf the message is sent, 0 if none), ``length``
    (``int64``), ``peer`` (``int32``), ``peer_world`` (``int32``), ``tag``
    (``int32``), ``flags`` (``int32``). A send was issued, or a receive was
    posted. ``peer`` is the destination, or the source of the receive

@@ -30,6 +30,8 @@ ompi_mpit_abi_t ompi_mpit_callback_abi = OMPI_MPIT_ABI_OMPI;
 
 mca_base_event_t *ompi_event_comm_created = NULL;
 mca_base_event_t *ompi_event_comm_freed = NULL;
+mca_base_event_t *ompi_event_request_activated = NULL;
+mca_base_event_t *ompi_event_request_completed = NULL;
 mca_base_event_t *ompi_event_comm_name_set = NULL;
 mca_base_event_t *ompi_event_initialization = NULL;
 mca_base_event_t *ompi_event_finalization = NULL;
@@ -92,6 +94,9 @@ void ompi_mpit_register_events(void)
     const ptrdiff_t o_final[3] = {0, 4, 8};
     const mca_base_var_type_t t_cc[2] = {MCA_BASE_VAR_TYPE_INT32_T, MCA_BASE_VAR_TYPE_UINT64_T};
     const ptrdiff_t o_cc[2] = {0, 8};
+    const mca_base_var_type_t t_rq[4] = {MCA_BASE_VAR_TYPE_UINT64_T, MCA_BASE_VAR_TYPE_UINT64_T,
+                                         MCA_BASE_VAR_TYPE_INT32_T, MCA_BASE_VAR_TYPE_INT32_T};
+    const ptrdiff_t o_rq[4] = {0, 8, 16, 20};
     const mca_base_var_type_t t_cf[1] = {MCA_BASE_VAR_TYPE_UINT64_T};
     const ptrdiff_t o_cf[1] = {0};
     const mca_base_var_type_t t_wc[4] = {MCA_BASE_VAR_TYPE_INT64_T, MCA_BASE_VAR_TYPE_INT32_T,
@@ -124,6 +129,7 @@ void ompi_mpit_register_events(void)
        below nor a partial (per-source failure) re-registration can leave a
        raise site holding a dangling pointer. */
     ompi_event_comm_created = ompi_event_comm_freed = NULL;
+    ompi_event_request_activated = ompi_event_request_completed = NULL;
     ompi_event_comm_name_set = NULL;
     ompi_event_initialization = ompi_event_finalization = NULL;
     ompi_event_errhandler_invoked = NULL;
@@ -199,6 +205,19 @@ void ompi_mpit_register_events(void)
                                                         "(MPI_Comm_set_name)",
                                                         OPAL_INFO_LVL_4, MCA_BASE_VAR_BIND_MPI_COMM,
                                                         1, t_cf, o_cf, ompi_src);
+
+        /* Request states (set REQUEST of the WG side document), bound to a communicator.  Payload: request handle
+           (u64), communicator handle (u64), kind (i32), flags (i32). */
+        ompi_event_request_activated = register_bound_event("mpi.request_activated",
+                                                            "A request was activated (non-blocking collective "
+                                                            "started, or a persistent request started)",
+                                                            OPAL_INFO_LVL_4, MCA_BASE_VAR_BIND_MPI_COMM, 4,
+                                                            t_rq, o_rq, ompi_src);
+        ompi_event_request_completed = register_bound_event("mpi.request_completed",
+                                                            "A request completed: all its work is done; raised "
+                                                            "before the request is completed towards the user",
+                                                            OPAL_INFO_LVL_4, MCA_BASE_VAR_BIND_MPI_COMM, 4,
+                                                            t_rq, o_rq, ompi_src);
 
         /* Error-handler invocations.  Payload carries the MPI_Errhandler handle
            and the handle of the MPI object the handler is invoked on. */

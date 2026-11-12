@@ -75,7 +75,7 @@ enum {
 /* send_start, recv_start */
 struct mca_pml_base_start_event_t {
     uint64_t request;   /* opaque; 0: the operation has no request */
-    uint64_t parent;    /* enclosing collective request; 0: none (reserved) */
+    uint64_t parent;    /* enclosing collective request; 0: none */
     int64_t length;     /* bytes to send, or capacity of the receive buffer */
     int32_t peer;       /* rank in the bound communicator (MPI_ANY_SOURCE possible) */
     int32_t peer_world; /* rank in the job's MPI_COMM_WORLD, -1: unknown */
@@ -96,6 +96,11 @@ struct mca_pml_base_complete_event_t {
 typedef struct mca_pml_base_complete_event_t mca_pml_base_complete_event_t;
 
 OMPI_DECLSPEC extern mca_base_event_t *mca_pml_base_event[MCA_PML_BASE_EVENT_MAX];
+
+/* Token of the collective request on whose behalf the calling thread is posting point-to-point messages (a
+   non-blocking collective schedule), 0 if none. Set by the collective component around its posting loop; copied
+   into the "parent" element of the start events so that a tool can attribute the messages to the request. */
+OMPI_DECLSPEC extern _Thread_local uint64_t mca_pml_base_event_parent;
 
 /* Called from the PML framework's register function. */
 void mca_pml_base_events_register(void);
@@ -130,7 +135,7 @@ static inline void mca_pml_base_event_raise_start(int which, ompi_communicator_t
     }
 
     mca_pml_base_start_event_t payload = {.request = (uint64_t) (uintptr_t) request,
-                                          .parent = 0,
+                                          .parent = mca_pml_base_event_parent,
                                           .length = (int64_t) length,
                                           .peer = peer,
                                           .peer_world = mca_pml_base_event_peer_world(comm, peer),

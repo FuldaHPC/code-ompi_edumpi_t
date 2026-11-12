@@ -234,6 +234,7 @@ ompi/test/t/mpi_t_event_14019
 ompi/test/t/mpi_t_event_comm_name
 ompi/test/t/mpi_t_event_pml_p2p
 ompi/test/t/mpi_t_event_coll_algorithm
+ompi/test/t/mpi_t_event_request_state
 ompi/test/t/mpi_t_event_inert_ok
 ompi/test/t/mpi_t_event_producers
 ompi/test/t/mpi_t_event_reinit

@@ -26,6 +26,8 @@
  * Additional copyrights may follow
  */
 #include "nbc_internal.h"
+#include "ompi/mca/pml/base/pml_base_events.h"
+#include "ompi/runtime/ompi_mpit_events.h"
 #include "ompi/mca/coll/base/coll_tags.h"
 #include "ompi/mca/coll/base/coll_base_functions.h"
 #include "ompi/mca/coll/base/coll_base_util.h"
@@ -428,7 +430,25 @@ int NBC_Progress(NBC_Handle *handle) {
   return ret;
 }
 
+static inline int NBC_Start_round_impl(NBC_Handle *handle);
+
+/* The messages of a schedule round are reported to MPI_T tools with the request as parent (WP-B2). */
 static inline int NBC_Start_round(NBC_Handle *handle) {
+  uint64_t saved = mca_pml_base_event_parent;
+  int res;
+
+  if (0 == handle->row_offset) {       /* first round of this activation */
+    ompi_mpit_raise_request_state(1, handle->comm, handle, OMPI_REQUEST_KIND_COLL,
+                                  handle->super.super.req_persistent ? OMPI_REQUEST_FLAG_PERSISTENT : 0);
+  }
+
+  mca_pml_base_event_parent = (uint64_t) (uintptr_t) handle;
+  res = NBC_Start_round_impl(handle);
+  mca_pml_base_event_parent = saved;
+  return res;
+}
+
+static inline int NBC_Start_round_impl(NBC_Handle *handle) {
   int num; /* number of operations */
   int res;
   char* ptr;

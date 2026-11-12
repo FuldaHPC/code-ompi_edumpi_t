@@ -20,6 +20,8 @@
 
 #include "opal/mca/base/mca_base_event.h"
 
+struct ompi_communicator_t;
+
 BEGIN_C_DECLS
 
 /* The "model" element of the ompi.mpi.initialization / ompi.mpi.finalization
@@ -49,6 +51,36 @@ OMPI_DECLSPEC extern ompi_mpit_abi_t ompi_mpit_callback_abi;
    producers are registered, so a raise site must NULL-check before raising. */
 OMPI_DECLSPEC extern mca_base_event_t *ompi_event_comm_created;
 OMPI_DECLSPEC extern mca_base_event_t *ompi_event_comm_freed;
+
+/* Set REQUEST (generic request states, bound to a communicator): ompi.mpi.request_activated and
+   ompi.mpi.request_completed, semantic names REQUEST_ACTIVATED / REQUEST_COMPLETED of the MPI Forum Tools WG
+   "entities and sets" side document. Payload: request (u64 token = the MPI_Request handle), comm (u64), kind (i32,
+   OMPI_REQUEST_KIND_*), flags (i32, OMPI_REQUEST_FLAG_*). Raised for non-blocking collective requests (libnbc);
+   point-to-point requests additionally report their envelope with the pml_* events. A token is valid from
+   REQUEST_ACTIVATED to REQUEST_COMPLETED of one activation. */
+OMPI_DECLSPEC extern mca_base_event_t *ompi_event_request_activated;
+OMPI_DECLSPEC extern mca_base_event_t *ompi_event_request_completed;
+
+enum {
+    OMPI_REQUEST_KIND_PML_SEND = 0,
+    OMPI_REQUEST_KIND_PML_RECV = 1,
+    OMPI_REQUEST_KIND_COLL = 2,
+    OMPI_REQUEST_KIND_OSC = 3,
+    OMPI_REQUEST_KIND_IO = 4,
+    OMPI_REQUEST_KIND_GENERALIZED = 5,
+    OMPI_REQUEST_KIND_PART = 6,
+};
+enum {
+    OMPI_REQUEST_FLAG_PERSISTENT = 0x1,
+};
+
+struct ompi_mpit_request_event_t {
+    uint64_t request;
+    uint64_t comm;
+    int32_t kind;
+    int32_t flags;
+};
+typedef struct ompi_mpit_request_event_t ompi_mpit_request_event_t;
 /* Object-bound (MPI_T_BIND_MPI_COMM): raised for the specific communicator being
    named, so only registrations bound to that communicator are notified. */
 OMPI_DECLSPEC extern mca_base_event_t *ompi_event_comm_name_set;
@@ -64,6 +96,22 @@ OMPI_DECLSPEC extern mca_base_event_t *ompi_event_win_freed;
    instance init, MPI_T_init_thread).  Gated by the master MCA parameter
    mca_base_event_register_producers (default on). */
 OMPI_DECLSPEC void ompi_mpit_register_events(void);
+
+/* raise REQUEST_ACTIVATED (activated != 0) or REQUEST_COMPLETED for a request; free when nobody listens */
+static inline void ompi_mpit_raise_request_state(int activated, struct ompi_communicator_t *comm, const void *request,
+                                                 int kind, int flags)
+{
+    mca_base_event_t *event = activated ? ompi_event_request_activated : ompi_event_request_completed;
+
+    if (OPAL_LIKELY(NULL == event || !mca_base_event_active(event))) {
+        return;
+    }
+    ompi_mpit_request_event_t payload = {.request = (uint64_t) (uintptr_t) request,
+                                         .comm = (uint64_t) (uintptr_t) comm,
+                                         .kind = kind,
+                                         .flags = flags};
+    mca_base_event_raise_bound(event, NULL, comm, &payload);
+}
 
 END_C_DECLS
 
