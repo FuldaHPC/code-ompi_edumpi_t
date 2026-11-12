@@ -417,6 +417,36 @@ Three correlators recur across their payloads:
    correlator precisely because there is no request to correlate with, and it
    is the only event such a send produces.
 
+Point-to-point events common to all PMLs
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The ``ob1`` events above describe ob1's matching engine and exist only when ob1
+is the PML. Four further event types describe a message from the point of view
+of the user program and are raised by every PML that supports them (``ob1`` and
+``ucx``). Every one is source ``ompi``, level 4, and bound to a communicator.
+
+``ompi.pml_send_start``, ``ompi.pml_recv_start``
+   ``request`` (``uint64``), ``parent`` (``uint64``, reserved, 0), ``length``
+   (``int64``), ``peer`` (``int32``), ``peer_world`` (``int32``), ``tag``
+   (``int32``), ``flags`` (``int32``). A send was issued, or a receive was
+   posted. ``peer`` is the destination, or the source of the receive
+   (``MPI_ANY_SOURCE`` is possible), as a rank in the bound communicator;
+   ``peer_world`` is the same process in ``MPI_COMM_WORLD`` (-1 if unknown).
+   ``length`` is the message size of a send and the capacity of the buffer of a
+   receive. ``request`` is an opaque token that must never be dereferenced and
+   is 0 for an operation without a request. ``flags`` is a bit field: 0x01
+   synchronous, 0x02 ready, 0x04 buffered, 0x08 blocking call, 0x10 persistent
+   request. A negative ``tag`` marks a message that Open MPI sends internally for
+   a collective operation.
+
+``ompi.pml_send_complete``, ``ompi.pml_recv_complete``
+   ``request`` (``uint64``), ``length`` (``int64``), ``peer`` (``int32``),
+   ``peer_world`` (``int32``), ``tag`` (``int32``), ``flags`` (``int32``). The
+   operation completed. For a receive, ``peer`` and ``tag`` are the actual
+   source and tag and ``length`` is the number of bytes received. ``flags``:
+   0x01 cancelled, 0x02 error, 0x04 truncated. With the ``ucx`` PML, a
+   nonblocking send does not raise ``send_complete``.
+
 Memory-release events
 ^^^^^^^^^^^^^^^^^^^^^
 

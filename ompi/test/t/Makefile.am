@@ -32,6 +32,7 @@ check_PROGRAMS = \
         mpi_t_errcodes \
         mpi_t_event_14019 \
         mpi_t_event_comm_name \
+        mpi_t_event_pml_p2p \
         mpi_t_event_inert_ok \
         mpi_t_event_producers \
         mpi_t_event_reinit \
@@ -88,6 +89,10 @@ mpi_t_event_14019_LDADD = $(test_ldadd)
 mpi_t_event_comm_name_SOURCES = mpi_t_event_comm_name.c
 mpi_t_event_comm_name_LDFLAGS = $(OMPI_PKG_CONFIG_LDFLAGS)
 mpi_t_event_comm_name_LDADD = $(test_ldadd)
+
+mpi_t_event_pml_p2p_SOURCES = mpi_t_event_pml_p2p.c
+mpi_t_event_pml_p2p_LDFLAGS = $(OMPI_PKG_CONFIG_LDFLAGS)
+mpi_t_event_pml_p2p_LDADD = $(test_ldadd)
 
 mpi_t_event_inert_ok_SOURCES = mpi_t_event_inert_ok.c
 mpi_t_event_inert_ok_LDFLAGS = $(OMPI_PKG_CONFIG_LDFLAGS)
