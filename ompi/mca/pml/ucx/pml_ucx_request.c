@@ -64,6 +64,9 @@ mca_pml_ucx_send_completion_internal(void *request, ucs_status_t status)
 
     mca_pml_ucx_set_send_status(&req->req_status, status);
     PML_UCX_ASSERT( !(REQUEST_COMPLETE(req)));
+    if (OPAL_UNLIKELY(UCS_ERR_CANCELED == status && !mca_pml_ucx_in_post)) {
+        ompi_mpit_raise_request_cancelled(req->req_mpi_object.comm, req, OMPI_REQUEST_KIND_PML_SEND, 0);
+    }
     ompi_request_complete(req, true);
 }
 
@@ -98,6 +101,9 @@ mca_pml_ucx_recv_completion_internal(void *request, ucs_status_t status,
 
     mca_pml_ucx_set_recv_status(&req->req_status, status, info);
     PML_UCX_ASSERT( !(REQUEST_COMPLETE(req)));
+    if (OPAL_UNLIKELY(UCS_ERR_CANCELED == status && !mca_pml_ucx_in_post)) {
+        ompi_mpit_raise_request_cancelled(req->req_mpi_object.comm, req, OMPI_REQUEST_KIND_PML_RECV, 0);
+    }
     if (OPAL_UNLIKELY(mca_pml_ucx_in_post)) {
         mca_pml_ucx_skipped_complete = req;           /* the poster raises the event after recv_start */
     } else if (OPAL_UNLIKELY(mca_pml_base_event_wanted(MCA_PML_BASE_EVENT_RECV_COMPLETE))) {

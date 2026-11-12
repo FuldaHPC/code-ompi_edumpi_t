@@ -69,6 +69,8 @@ OMPI_DECLSPEC extern mca_base_event_t *ompi_event_request_created;
 OMPI_DECLSPEC extern mca_base_event_t *ompi_event_request_freeing;
 OMPI_DECLSPEC extern mca_base_event_t *ompi_event_request_activated;
 OMPI_DECLSPEC extern mca_base_event_t *ompi_event_request_completed;
+/* REQUEST_CANCELLED: a cancellation was granted (the request will complete with status cancelled); bound to a communicator */
+OMPI_DECLSPEC extern mca_base_event_t *ompi_event_request_cancelled;
 
 enum {
     OMPI_REQUEST_KIND_UNKNOWN = -1,   /* only in REQUEST_FREEING, where the owner does not keep the kind */
@@ -120,6 +122,20 @@ static inline void ompi_mpit_raise_request_handle(int created, struct ompi_commu
                                          .kind = kind,
                                          .flags = flags};
     mca_base_event_raise(event, NULL, &payload);
+}
+
+static inline void ompi_mpit_raise_request_cancelled(struct ompi_communicator_t *comm, const void *request, int kind, int flags)
+{
+    mca_base_event_t *event = ompi_event_request_cancelled;
+
+    if (OPAL_LIKELY(NULL == event || !mca_base_event_active(event))) {
+        return;
+    }
+    ompi_mpit_request_event_t payload = {.request = (uint64_t) (uintptr_t) request,
+                                         .comm = (uint64_t) (uintptr_t) comm,
+                                         .kind = kind,
+                                         .flags = flags};
+    mca_base_event_raise_bound(event, NULL, comm, &payload);
 }
 
 /* raise REQUEST_ACTIVATED (activated != 0) or REQUEST_COMPLETED for a request; free when nobody listens */

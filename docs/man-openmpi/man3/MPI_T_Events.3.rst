@@ -507,6 +507,14 @@ Request state events
    collective requests of the ``libnbc`` component (kind 2); point-to-point requests report their envelope with the
    events of the next section.
 
+``ompi.mpi.request_cancelled``
+   Level 4, bound to a communicator, same four elements. A cancellation of a request was granted: the request will
+   complete with the status cancelled (``MPI_Test_cancelled``). Raised for receives of ``ob1`` and for receives and
+   sends of ``ucx``; the order of the events of one request is created, activated, cancelled, completed, freeing. Together with
+   ``ompi.mpi.request_freeing`` (the freed state) the four events ``request_activated``, ``request_completed``,
+   ``request_cancelled`` and ``request_freeing`` cover the request states of the entity set. Not raised for
+   persistent requests of ``ucx`` and for requests that cannot be cancelled.
+
 Point-to-point events common to all PMLs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

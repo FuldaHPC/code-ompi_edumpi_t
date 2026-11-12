@@ -34,6 +34,7 @@ mca_base_event_t *ompi_event_request_created = NULL;
 mca_base_event_t *ompi_event_request_freeing = NULL;
 mca_base_event_t *ompi_event_request_activated = NULL;
 mca_base_event_t *ompi_event_request_completed = NULL;
+mca_base_event_t *ompi_event_request_cancelled = NULL;
 mca_base_event_t *ompi_event_comm_name_set = NULL;
 mca_base_event_t *ompi_event_initialization = NULL;
 mca_base_event_t *ompi_event_finalization = NULL;
@@ -133,6 +134,7 @@ void ompi_mpit_register_events(void)
     ompi_event_comm_created = ompi_event_comm_freed = NULL;
     ompi_event_request_activated = ompi_event_request_completed = NULL;
     ompi_event_request_created = ompi_event_request_freeing = NULL;
+    ompi_event_request_cancelled = NULL;
     ompi_event_comm_name_set = NULL;
     ompi_event_initialization = ompi_event_finalization = NULL;
     ompi_event_errhandler_invoked = NULL;
@@ -228,6 +230,12 @@ void ompi_mpit_register_events(void)
         ompi_event_request_completed = register_bound_event("mpi.request_completed",
                                                             "A request completed: all its work is done; raised "
                                                             "before the request is completed towards the user",
+                                                            OPAL_INFO_LVL_4, MCA_BASE_VAR_BIND_MPI_COMM, 4,
+                                                            t_rq, o_rq, ompi_src);
+
+        ompi_event_request_cancelled = register_bound_event("mpi.request_cancelled",
+                                                            "A cancellation of a request was granted: the request "
+                                                            "completes with status cancelled",
                                                             OPAL_INFO_LVL_4, MCA_BASE_VAR_BIND_MPI_COMM, 4,
                                                             t_rq, o_rq, ompi_src);
 

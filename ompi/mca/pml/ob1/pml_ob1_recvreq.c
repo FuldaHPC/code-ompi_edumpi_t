@@ -173,6 +173,8 @@ static int mca_pml_ob1_recv_request_cancel(struct ompi_request_t* ompi_request, 
        because the matched peer has died. */
     mca_pml_ob1_event_raise_request(MCA_PML_OB1_EVENT_RECEIVE_CANCEL, comm,
                                     &request->req_recv.req_base);
+    ompi_mpit_raise_request_cancelled(comm, request, OMPI_REQUEST_KIND_PML_RECV,
+                                      request->req_recv.req_base.req_ompi.req_persistent ? OMPI_REQUEST_FLAG_PERSISTENT : 0);
     recv_request_pml_complete(request);
 
     /*

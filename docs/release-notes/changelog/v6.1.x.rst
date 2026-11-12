@@ -366,3 +366,7 @@ Open MPI version v6.1.0
 - Added the request-bound MPI_T variables ``coll_libnbc_request_messages`` and ``coll_libnbc_request_bytes``: the messages
   and bytes a non-blocking collective request sent, per peer.  Fixed a crash in ``mca_base_pvar_handle_alloc()`` when a
   variable refuses the object a handle is bound to.
+
+- Added the MPI_T event ``ompi.mpi.request_cancelled`` for granted cancellations of requests of the ``ob1`` and ``ucx`` PMLs.
+  The ``ucx`` PML now raises the events of a receive that matches immediately in the order of the request's life
+  (``recv_start`` before ``recv_complete``).
