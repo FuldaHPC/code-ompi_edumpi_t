@@ -43,6 +43,7 @@
 #include "ompi/mca/coll/base/coll_base_functions.h"
 #include "ompi/proc/proc.h"
 #include "coll_adapt.h"
+#include "ompi/runtime/ompi_mpit_events.h"
 
 #include "ompi/mca/coll/base/coll_tags.h"
 #include "ompi/mca/pml/pml.h"
@@ -213,6 +214,7 @@ mca_coll_base_module_t *ompi_coll_adapt_comm_query(struct ompi_communicator_t * 
  */
 int ompi_coll_adapt_request_free(ompi_request_t ** request)
 {
+    ompi_mpit_raise_request_handle(0, NULL, *request, OMPI_REQUEST_KIND_UNKNOWN, 0);
     OMPI_REQUEST_FINI(*request);
     (*request)->req_state = OMPI_REQUEST_INVALID;
     OBJ_RELEASE(*request);

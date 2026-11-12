@@ -16,6 +16,7 @@
 #include "ompi/mca/pml/pml.h"
 #include "coll_adapt.h"
 #include "ompi/mca/coll/base/coll_base_events.h"
+#include "ompi/mca/pml/base/pml_base_events.h"
 #include "coll_adapt_algorithms.h"
 #include "coll_adapt_context.h"
 #include "coll_adapt_topocache.h"
@@ -101,6 +102,7 @@ int ompi_coll_adapt_ibcast_fini(void)
 static int ibcast_request_fini(ompi_coll_adapt_bcast_context_t * context)
 {
     ompi_request_t *temp_req = context->con->request;
+    ompi_communicator_t *comm_for_event_ = context->con->comm;
     if (context->con->tree->tree_nextsize != 0) {
         free(context->con->send_array);
     }
@@ -109,6 +111,7 @@ static int ibcast_request_fini(ompi_coll_adapt_bcast_context_t * context)
     }
     OBJ_RELEASE(context->con->mutex);
     OBJ_RELEASE(context->con);
+    ompi_mpit_raise_request_state(0, comm_for_event_, temp_req, OMPI_REQUEST_KIND_COLL, 0);
     ompi_request_complete(temp_req, 1);
 
     return OMPI_SUCCESS;
@@ -155,10 +158,15 @@ static int send_cb(ompi_request_t * req)
                              ompi_comm_rank(send_context->con->comm), send_context->frag_id,
                              send_context->peer, (void *) send_context->buff, send_count,
                              send_context->con->ibcast_tag - new_id));
-        err = MCA_PML_CALL(isend
-                           (send_buff, send_count, send_context->con->datatype, send_context->peer,
-                            send_context->con->ibcast_tag - new_id,
-                            MCA_PML_BASE_SEND_STANDARD, send_context->con->comm, &send_req));
+        { /* messages posted for this request name it as their parent (MPI_T tools) */
+            uint64_t parent_saved_ = mca_pml_base_event_parent;
+            mca_pml_base_event_parent = (uint64_t) (uintptr_t) send_context->con->request;
+            err = MCA_PML_CALL(isend
+                               (send_buff, send_count, send_context->con->datatype, send_context->peer,
+                                send_context->con->ibcast_tag - new_id,
+                                MCA_PML_BASE_SEND_STANDARD, send_context->con->comm, &send_req));
+            mca_pml_base_event_parent = parent_saved_;
+        }
         if (MPI_SUCCESS != err) {
             opal_free_list_return(mca_coll_adapt_component.adapt_ibcast_context_free_list,
                                   (opal_free_list_item_t *)send_context);
@@ -239,10 +247,15 @@ static int recv_cb(ompi_request_t * req)
                              ompi_comm_rank(context->con->comm), context->frag_id, context->peer,
                              (void *) recv_buff, recv_count,
                              recv_context->con->ibcast_tag - recv_context->frag_id));
-        MCA_PML_CALL(irecv
-                     (recv_buff, recv_count, recv_context->con->datatype, recv_context->peer,
-                      recv_context->con->ibcast_tag - recv_context->frag_id,
-                      recv_context->con->comm, &recv_req));
+        { /* messages posted for this request name it as their parent (MPI_T tools) */
+            uint64_t parent_saved_ = mca_pml_base_event_parent;
+            mca_pml_base_event_parent = (uint64_t) (uintptr_t) recv_context->con->request;
+            MCA_PML_CALL(irecv
+                         (recv_buff, recv_count, recv_context->con->datatype, recv_context->peer,
+                          recv_context->con->ibcast_tag - recv_context->frag_id,
+                          recv_context->con->comm, &recv_req));
+            mca_pml_base_event_parent = parent_saved_;
+        }
 
         /* Set the receive callback */
         ompi_request_set_callback(recv_req, recv_cb, recv_context);
@@ -279,12 +292,16 @@ static int recv_cb(ompi_request_t * req)
                                  ompi_comm_rank(send_context->con->comm), send_context->frag_id,
                                  send_context->peer, (void *) send_context->buff, send_count,
                                  send_context->con->ibcast_tag - send_context->frag_id));
-            err =
-                MCA_PML_CALL(isend
-                             (send_buff, send_count, send_context->con->datatype,
-                              send_context->peer,
-                              send_context->con->ibcast_tag - send_context->frag_id,
-                              MCA_PML_BASE_SEND_STANDARD, send_context->con->comm, &send_req));
+                { /* messages posted for this request name it as their parent (MPI_T tools) */
+                    uint64_t parent_saved_ = mca_pml_base_event_parent;
+                    mca_pml_base_event_parent = (uint64_t) (uintptr_t) send_context->con->request;
+                    err = MCA_PML_CALL(isend
+                                 (send_buff, send_count, send_context->con->datatype,
+                                  send_context->peer,
+                                  send_context->con->ibcast_tag - send_context->frag_id,
+                                  MCA_PML_BASE_SEND_STANDARD, send_context->con->comm, &send_req));
+                    mca_pml_base_event_parent = parent_saved_;
+                }
             if (MPI_SUCCESS != err) {
                 opal_free_list_return(mca_coll_adapt_component.adapt_ibcast_context_free_list,
                                       (opal_free_list_item_t *)send_context);
@@ -412,6 +429,8 @@ int ompi_coll_adapt_ibcast_generic(void *buff, size_t count, struct ompi_datatyp
     temp_request->super.req_status._cancelled = 0;
     temp_request->super.req_status._ucount = 0;
     *request = (ompi_request_t*)temp_request;
+    ompi_mpit_raise_request_handle(1, comm, temp_request, OMPI_REQUEST_KIND_COLL, 0);
+    ompi_mpit_raise_request_state(1, comm, temp_request, OMPI_REQUEST_KIND_COLL, 0);
 
     /* Set up mutex */
     mutex = OBJ_NEW(opal_mutex_t);
@@ -507,11 +526,15 @@ int ompi_coll_adapt_ibcast_generic(void *buff, size_t count, struct ompi_datatyp
                                      "[%d]: Send(start in main): segment %d to %d at buff %p send_count %d tag %d\n",
                                      rank, context->frag_id, context->peer,
                                      (void *) send_buff, send_count, con->ibcast_tag - i));
-                err =
-                    MCA_PML_CALL(isend
-                                 (send_buff, send_count, datatype, context->peer,
-                                  con->ibcast_tag - i, sendmode, comm,
-                                  &send_req));
+                    { /* messages posted for this request name it as their parent (MPI_T tools) */
+                        uint64_t parent_saved_ = mca_pml_base_event_parent;
+                        mca_pml_base_event_parent = (uint64_t) (uintptr_t) con->request;
+                        err = MCA_PML_CALL(isend
+                                     (send_buff, send_count, datatype, context->peer,
+                                      con->ibcast_tag - i, sendmode, comm,
+                                      &send_req));
+                        mca_pml_base_event_parent = parent_saved_;
+                    }
                 if (MPI_SUCCESS != err) {
                     return err;
                 }
@@ -565,10 +588,14 @@ int ompi_coll_adapt_ibcast_generic(void *buff, size_t count, struct ompi_datatyp
                                  ompi_comm_rank(context->con->comm), context->frag_id,
                                  context->peer, (void *) recv_buff, recv_count,
                                  con->ibcast_tag - i));
-            err =
-                MCA_PML_CALL(irecv
-                             (recv_buff, recv_count, datatype, context->peer,
-                              con->ibcast_tag - i, comm, &recv_req));
+                { /* messages posted for this request name it as their parent (MPI_T tools) */
+                    uint64_t parent_saved_ = mca_pml_base_event_parent;
+                    mca_pml_base_event_parent = (uint64_t) (uintptr_t) con->request;
+                    err = MCA_PML_CALL(irecv
+                                 (recv_buff, recv_count, datatype, context->peer,
+                                  con->ibcast_tag - i, comm, &recv_req));
+                    mca_pml_base_event_parent = parent_saved_;
+                }
             /* Set receive callback */
             OPAL_THREAD_UNLOCK(mutex);
             if (MPI_SUCCESS != err) {

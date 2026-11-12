@@ -18,6 +18,7 @@
 #include "ompi/communicator/communicator.h"
 #include "coll_adapt.h"
 #include "ompi/mca/coll/base/coll_base_events.h"
+#include "ompi/mca/pml/base/pml_base_events.h"
 #include "coll_adapt_algorithms.h"
 #include "coll_adapt_context.h"
 #include "coll_adapt_item.h"
@@ -184,6 +185,7 @@ static int ireduce_request_fini(ompi_coll_adapt_reduce_context_t * context)
 {
     /* Return the allocated recourses */
     ompi_request_t *temp_req = context->con->request;
+    ompi_communicator_t *comm_for_event_ = context->con->comm;
     if (context->con->accumbuf != NULL) {
         if (context->con->rank != context->con->root) {
             for (int i = 0; i < context->con->num_segs; i++) {
@@ -211,6 +213,7 @@ static int ireduce_request_fini(ompi_coll_adapt_reduce_context_t * context)
     opal_free_list_return(mca_coll_adapt_component.adapt_ireduce_context_free_list,
                           (opal_free_list_item_t *) context);
     /* Complete the request */
+    ompi_mpit_raise_request_state(0, comm_for_event_, temp_req, OMPI_REQUEST_KIND_COLL, 0);
     ompi_request_complete(temp_req, 1);
     return OMPI_SUCCESS;
 }
@@ -261,11 +264,16 @@ static int send_cb(ompi_request_t * req)
                              send_context->con->ireduce_tag - send_context->seg_index));
 
         ompi_request_t *send_req;
-        err = MCA_PML_CALL(isend
-                           (send_context->buff, send_count, send_context->con->datatype,
-                            send_context->peer,
-                            context->con->ireduce_tag - send_context->seg_index,
-                            MCA_PML_BASE_SEND_STANDARD, send_context->con->comm, &send_req));
+        { /* messages posted for this request name it as their parent (MPI_T tools) */
+            uint64_t parent_saved_ = mca_pml_base_event_parent;
+            mca_pml_base_event_parent = (uint64_t) (uintptr_t) send_context->con->request;
+            err = MCA_PML_CALL(isend
+                               (send_context->buff, send_count, send_context->con->datatype,
+                                send_context->peer,
+                                context->con->ireduce_tag - send_context->seg_index,
+                                MCA_PML_BASE_SEND_STANDARD, send_context->con->comm, &send_req));
+            mca_pml_base_event_parent = parent_saved_;
+        }
         if (MPI_SUCCESS != err) {
             return err;
         }
@@ -344,10 +352,15 @@ static int recv_cb(ompi_request_t * req)
                              (void *) inbuf,
                              recv_context->con->ireduce_tag - recv_context->seg_index));
         ompi_request_t *recv_req;
-        err = MCA_PML_CALL(irecv(temp_recv_buf, recv_count, recv_context->con->datatype,
-                                 recv_context->peer,
-                                 recv_context->con->ireduce_tag - recv_context->seg_index,
-                                 recv_context->con->comm, &recv_req));
+        { /* messages posted for this request name it as their parent (MPI_T tools) */
+            uint64_t parent_saved_ = mca_pml_base_event_parent;
+            mca_pml_base_event_parent = (uint64_t) (uintptr_t) recv_context->con->request;
+            err = MCA_PML_CALL(irecv(temp_recv_buf, recv_count, recv_context->con->datatype,
+                                     recv_context->peer,
+                                     recv_context->con->ireduce_tag - recv_context->seg_index,
+                                     recv_context->con->comm, &recv_req));
+            mca_pml_base_event_parent = parent_saved_;
+        }
         if (MPI_SUCCESS != err) {
             return err;
         }
@@ -438,10 +451,15 @@ static int recv_cb(ompi_request_t * req)
                                  send_context->con->ireduce_tag - send_context->seg_index));
 
             ompi_request_t *send_req;
-            err = MCA_PML_CALL(isend(send_context->buff, send_count, send_context->con->datatype,
-                                     send_context->peer,
-                                     send_context->con->ireduce_tag - send_context->seg_index,
-                                     MCA_PML_BASE_SEND_STANDARD, send_context->con->comm, &send_req));
+            { /* messages posted for this request name it as their parent (MPI_T tools) */
+                uint64_t parent_saved_ = mca_pml_base_event_parent;
+                mca_pml_base_event_parent = (uint64_t) (uintptr_t) send_context->con->request;
+                err = MCA_PML_CALL(isend(send_context->buff, send_count, send_context->con->datatype,
+                                         send_context->peer,
+                                         send_context->con->ireduce_tag - send_context->seg_index,
+                                         MCA_PML_BASE_SEND_STANDARD, send_context->con->comm, &send_req));
+                mca_pml_base_event_parent = parent_saved_;
+            }
             if (MPI_SUCCESS != err) {
                 return err;
             }
@@ -584,6 +602,8 @@ int ompi_coll_adapt_ireduce_generic(const void *sbuf, void *rbuf, size_t count,
     temp_request->super.req_status._cancelled = 0;
     temp_request->super.req_status._ucount = 0;
     *request = (ompi_request_t*)temp_request;
+    ompi_mpit_raise_request_handle(1, comm, temp_request, OMPI_REQUEST_KIND_COLL, 0);
+    ompi_mpit_raise_request_state(1, comm, temp_request, OMPI_REQUEST_KIND_COLL, 0);
 
     /* Set up mutex */
     mutex_op_list = (opal_mutex_t *) malloc(sizeof(opal_mutex_t) * num_segs);
@@ -715,9 +735,14 @@ int ompi_coll_adapt_ireduce_generic(const void *sbuf, void *rbuf, size_t count,
 
                 /* Create a recv request */
                 ompi_request_t *recv_req;
-                err = MCA_PML_CALL(irecv
-                                    (temp_recv_buf, recv_count, dtype, tree->tree_next[i],
-                                    con->ireduce_tag - seg_index, comm, &recv_req));
+                { /* messages posted for this request name it as their parent (MPI_T tools) */
+                    uint64_t parent_saved_ = mca_pml_base_event_parent;
+                    mca_pml_base_event_parent = (uint64_t) (uintptr_t) con->request;
+                    err = MCA_PML_CALL(irecv
+                                        (temp_recv_buf, recv_count, dtype, tree->tree_next[i],
+                                        con->ireduce_tag - seg_index, comm, &recv_req));
+                    mca_pml_base_event_parent = parent_saved_;
+                }
                 if (MPI_SUCCESS != err) {
                     return err;
                 }
@@ -765,10 +790,15 @@ int ompi_coll_adapt_ireduce_generic(const void *sbuf, void *rbuf, size_t count,
 
             /* Create send request */
             ompi_request_t *send_req;
-            err = MCA_PML_CALL(isend
-                                (context->buff, send_count, dtype, tree->tree_prev,
-                                con->ireduce_tag - context->seg_index,
-                                sendmode, comm, &send_req));
+            { /* messages posted for this request name it as their parent (MPI_T tools) */
+                uint64_t parent_saved_ = mca_pml_base_event_parent;
+                mca_pml_base_event_parent = (uint64_t) (uintptr_t) con->request;
+                err = MCA_PML_CALL(isend
+                                    (context->buff, send_count, dtype, tree->tree_prev,
+                                    con->ireduce_tag - context->seg_index,
+                                    sendmode, comm, &send_req));
+                mca_pml_base_event_parent = parent_saved_;
+            }
             if (MPI_SUCCESS != err) {
                 return err;
             }
