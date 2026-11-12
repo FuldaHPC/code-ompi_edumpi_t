@@ -45,6 +45,7 @@
 #include "opal/mca/base/mca_base_event.h"
 #include "ompi/communicator/communicator.h"
 #include "ompi/proc/proc.h"
+#include "ompi/runtime/ompi_mpit_events.h"
 
 BEGIN_C_DECLS
 
@@ -130,6 +131,14 @@ static inline void mca_pml_base_event_raise_start(int which, ompi_communicator_t
                                                   const void *request, int peer, int tag,
                                                   size_t length, int flags)
 {
+    /* generic REQUEST_ACTIVATED; a request-less (inline) operation has no token and reports none */
+    if (NULL != request) {
+        ompi_mpit_raise_request_state(1, comm, request,
+                                      MCA_PML_BASE_EVENT_SEND_START == which ? OMPI_REQUEST_KIND_PML_SEND
+                                                                             : OMPI_REQUEST_KIND_PML_RECV,
+                                      ((flags & MCA_PML_BASE_EVENT_FLAG_PERSISTENT) ? OMPI_REQUEST_FLAG_PERSISTENT : 0)
+                                      | ((flags & MCA_PML_BASE_EVENT_FLAG_BLOCKING) ? OMPI_REQUEST_FLAG_BLOCKING : 0));
+    }
     if (OPAL_LIKELY(!mca_pml_base_event_wanted(which))) {
         return;
     }
@@ -149,6 +158,13 @@ static inline void mca_pml_base_event_raise_complete(int which, ompi_communicato
                                                      const void *request, int peer, int tag,
                                                      size_t length, int flags)
 {
+    /* generic REQUEST_COMPLETED */
+    if (NULL != request) {
+        ompi_mpit_raise_request_state(0, comm, request,
+                                      MCA_PML_BASE_EVENT_SEND_COMPLETE == which ? OMPI_REQUEST_KIND_PML_SEND
+                                                                                : OMPI_REQUEST_KIND_PML_RECV,
+                                      0);
+    }
     if (OPAL_LIKELY(!mca_pml_base_event_wanted(which))) {
         return;
     }

@@ -37,6 +37,7 @@ check_PROGRAMS = \
         mpi_t_event_request_state \
         mpi_t_event_request_handle \
         mpi_t_event_request_cancel \
+        mpi_t_event_request_pml_state \
         mpi_t_pvar_coll_request \
         mpi_t_event_inert_ok \
         mpi_t_event_producers \
@@ -114,6 +115,9 @@ mpi_t_event_request_handle_LDADD = $(test_ldadd)
 mpi_t_event_request_cancel_SOURCES = mpi_t_event_request_cancel.c
 mpi_t_event_request_cancel_LDFLAGS = $(OMPI_PKG_CONFIG_LDFLAGS)
 mpi_t_event_request_cancel_LDADD = $(test_ldadd)
+mpi_t_event_request_pml_state_SOURCES = mpi_t_event_request_pml_state.c
+mpi_t_event_request_pml_state_LDFLAGS = $(OMPI_PKG_CONFIG_LDFLAGS)
+mpi_t_event_request_pml_state_LDADD = $(test_ldadd)
 
 mpi_t_pvar_coll_request_SOURCES = mpi_t_pvar_coll_request.c
 mpi_t_pvar_coll_request_LDFLAGS = $(OMPI_PKG_CONFIG_LDFLAGS)

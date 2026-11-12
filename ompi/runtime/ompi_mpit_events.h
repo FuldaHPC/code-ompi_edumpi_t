@@ -56,7 +56,8 @@ OMPI_DECLSPEC extern mca_base_event_t *ompi_event_comm_freed;
    ompi.mpi.request_completed, semantic names REQUEST_ACTIVATED / REQUEST_COMPLETED of the MPI Forum Tools WG
    "entities and sets" side document. Payload: request (u64 token = the MPI_Request handle), comm (u64), kind (i32,
    OMPI_REQUEST_KIND_*), flags (i32, OMPI_REQUEST_FLAG_*). Raised for non-blocking collective requests (libnbc);
-   point-to-point requests additionally report their envelope with the pml_* events. A token is valid from
+   point-to-point requests of ob1 are reported too (flag BLOCKING marks the internal request of a blocking
+   call) and additionally report their envelope with the pml_* events. A token is valid from
    REQUEST_ACTIVATED to REQUEST_COMPLETED of one activation. */
 /* Set HANDLE for requests (not bound to an object): ompi.mpi.request_created / ompi.mpi.request_freeing, semantic names
    REQUEST_CREATED / REQUEST_FREEING. Payload: request (u64, the MPI_Request handle), comm (u64), kind (i32,
@@ -84,6 +85,7 @@ enum {
 };
 enum {
     OMPI_REQUEST_FLAG_PERSISTENT = 0x1,
+    OMPI_REQUEST_FLAG_BLOCKING = 0x2,   /* internal request of a blocking call: no created/freeing event follows */
 };
 
 struct ompi_mpit_request_event_t {
