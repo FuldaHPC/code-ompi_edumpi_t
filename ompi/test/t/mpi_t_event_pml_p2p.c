@@ -131,6 +131,25 @@ int main(int argc, char **argv)
                && 8 == seen[RECV_COMPLETE].length);
     expect("blocking send_complete fired", 1 == seen[SEND_COMPLETE].fired);
 
+    /* persistent requests: one activation each, flagged persistent (0x10) */
+    reset();
+    {
+        MPI_Request pr[2];
+        MPI_Recv_init(out, 4, MPI_INT, 0, 11, self, &pr[0]);
+        MPI_Send_init(in, 4, MPI_INT, 0, 11, self, &pr[1]);
+        MPI_Startall(2, pr);
+        MPI_Waitall(2, pr, MPI_STATUSES_IGNORE);
+        expect("persistent: send_start and recv_start once each, flagged persistent",
+               1 == seen[SEND_START].fired && 1 == seen[RECV_START].fired && (seen[SEND_START].flags & 0x10)
+                   && (seen[RECV_START].flags & 0x10) && 11 == seen[SEND_START].tag && 11 == seen[RECV_START].tag);
+        expect("persistent: recv_complete once with source 0, tag 11, 16 bytes",
+               1 == seen[RECV_COMPLETE].fired && 0 == seen[RECV_COMPLETE].peer && 11 == seen[RECV_COMPLETE].tag
+                   && 16 == seen[RECV_COMPLETE].length);
+        expect("persistent: send_complete once", 1 == seen[SEND_COMPLETE].fired);
+        MPI_Request_free(&pr[0]);
+        MPI_Request_free(&pr[1]);
+    }
+
     for (i = 0; i < NEV; ++i) {
         (void) MPI_T_event_handle_free(reg[i], NULL, NULL);
     }

@@ -621,6 +621,8 @@ int mca_pml_ucx_irecv_init(void *buf, size_t count, ompi_datatype_t *datatype,
 
     req->ompi.req_state           = OMPI_REQUEST_INACTIVE;
     req->ompi.req_mpi_object.comm = comm;
+    req->ev_peer                  = src;
+    req->ev_tag                   = tag;
     req->flags                    = 0;
     req->buffer                   = buf;
     req->count                    = count;
@@ -776,6 +778,8 @@ int mca_pml_ucx_isend_init(const void *buf, size_t count, ompi_datatype_t *datat
 
     req->ompi.req_state           = OMPI_REQUEST_INACTIVE;
     req->ompi.req_mpi_object.comm = comm;
+    req->ev_peer                  = dst;
+    req->ev_tag                   = tag;
     req->flags                    = MCA_PML_UCX_REQUEST_FLAG_SEND;
     req->buffer                   = (void *)buf;
     req->count                    = count;
@@ -1269,6 +1273,7 @@ int mca_pml_ucx_start(size_t count, ompi_request_t** requests)
         PML_UCX_ASSERT(preq->ompi.req_state != OMPI_REQUEST_INVALID);
         preq->ompi.req_state = OMPI_REQUEST_ACTIVE;
         mca_pml_ucx_request_reset(&preq->ompi);
+        mca_pml_ucx_event_preq_start(preq);
 
         if (preq->flags & MCA_PML_UCX_REQUEST_FLAG_SEND) {
             tmp_req = (ompi_request_t*)mca_pml_ucx_common_send(preq->send.ep,
@@ -1297,6 +1302,7 @@ int mca_pml_ucx_start(size_t count, ompi_request_t** requests)
             PML_UCX_VERBOSE(8, "send completed immediately, completing persistent request %p",
                             (void*)preq);
             mca_pml_ucx_set_send_status(&preq->ompi.req_status, UCS_OK);
+            mca_pml_ucx_event_preq_complete(preq, &preq->ompi.req_status);
             ompi_request_complete(&preq->ompi, true);
         } else if (!UCS_PTR_IS_ERR(tmp_req)) {
             if (REQUEST_COMPLETE(tmp_req)) {
