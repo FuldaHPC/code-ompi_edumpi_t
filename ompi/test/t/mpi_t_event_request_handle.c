@@ -25,6 +25,13 @@
 #include <string.h>
 
 static long n_created = 0, n_freeing = 0, n_unmatched = 0, n_bad_kind = 0;
+/* request-bound PVAR (pml_ob1_request_bytes): bound in the created handler, read in the freeing handler */
+static MPI_T_pvar_session pv_session;
+static int pv_index = -1;
+static int check_values = 0;       /* only the one-byte point-to-point phases have a known value */
+static long n_pv_read = 0, n_pv_wrong = 0, n_pv_fail = 0, n_pv_val[3] = {0, 0, 0}, n_pv_kind[2] = {0, 0}, n_pv_ok_kind[2] = {0, 0};
+#define PVTAB 65536
+static struct { uint64_t token; MPI_T_pvar_handle h; } pv[PVTAB];
 #define TABLE 65536
 static uint64_t live[TABLE];       /* tokens that were created and not yet freed */
 static int failures = 0;
@@ -53,6 +60,21 @@ static void cb(MPI_T_event_instance ev, MPI_T_event_registration h __opal_attrib
         if (kind < 0 || kind > 2) {
             ++n_bad_kind;
         }
+        if (pv_index >= 0 && (0 == kind || 1 == kind)) {       /* bind in the created handler: the request exists now */
+            MPI_Request rq = (MPI_Request) (uintptr_t) token;
+            MPI_T_pvar_handle h;
+            int cnt;
+            size_t j = slot(token);
+            if (MPI_SUCCESS == MPI_T_pvar_handle_alloc(pv_session, pv_index, &rq, &h, &cnt)) {
+                while (pv[j].token > 1) {
+                    j = (j + 1) % PVTAB;
+                }
+                pv[j].token = token;
+                pv[j].h = h;
+            } else {
+                ++n_pv_fail;
+            }
+        }
         for (i = slot(token);; i = (i + 1) % TABLE) {
             if (0 == live[i] || 1 == live[i]) {
                 live[i] = token;
@@ -61,6 +83,31 @@ static void cb(MPI_T_event_instance ev, MPI_T_event_registration h __opal_attrib
         }
     } else {
         ++n_freeing;
+        if (pv_index >= 0) {                                    /* read in the freeing handler: the request still exists */
+            size_t j;
+            for (j = slot(token); 0 != pv[j].token; j = (j + 1) % PVTAB) {
+                if (pv[j].token == token) {
+                    unsigned long long v = 0;
+                    if (MPI_SUCCESS == MPI_T_pvar_read(pv_session, pv[j].h, &v)) {
+                        ++n_pv_read;
+                        ++n_pv_val[v > 1 ? 2 : v];
+                        ++n_pv_kind[kind == 1];
+                        if (!check_values) {
+                            /* not checked */
+                        } else if (1 != v) {
+                            ++n_pv_wrong;
+                        } else {
+                            ++n_pv_ok_kind[kind == 1];
+                        }
+                    } else {
+                        ++n_pv_fail;
+                    }
+                    (void) MPI_T_pvar_handle_free(pv_session, &pv[j].h);
+                    pv[j].token = 1;
+                    break;
+                }
+            }
+        }
         for (i = slot(token); 0 != live[i]; i = (i + 1) % TABLE) {
             if (live[i] == token) {
                 live[i] = 1;
@@ -88,12 +135,30 @@ int main(int argc, char **argv)
         MPI_Finalize();
         return 77;
     }
+    if (MPI_SUCCESS == MPI_T_pvar_session_create(&pv_session)) {
+        int nm = 64, verb, vclass, bind, readonly, cont, atomic;
+        char nbuf[64], dbuf[128];
+        int dl = 128, num = 0;
+        MPI_Datatype dt;
+        MPI_T_enum en;
+        if (MPI_SUCCESS == MPI_T_pvar_get_index("pml_ob1_request_bytes", MPI_T_PVAR_CLASS_SIZE, &pv_index)) {
+            (void) MPI_T_pvar_get_info(pv_index, nbuf, &nm, &verb, &vclass, &dt, &en, dbuf, &dl, &bind, &readonly, &cont,
+                                       &atomic);
+            (void) num;
+            if (MPI_T_BIND_MPI_REQUEST != bind) {
+                pv_index = -1;
+            }
+        } else {
+            pv_index = -1;
+        }
+    }
     /* not bound to an object: a tool cannot bind to a request that does not exist yet */
     expect("alloc handles", MPI_SUCCESS == MPI_T_event_handle_alloc(i_cr, NULL, MPI_INFO_NULL, &r_cr)
                                 && MPI_SUCCESS == MPI_T_event_handle_alloc(i_fr, NULL, MPI_INFO_NULL, &r_fr));
     (void) MPI_T_event_register_callback(r_cr, MPI_T_CB_REQUIRE_NONE, MPI_INFO_NULL, (void *) 1, cb);
     (void) MPI_T_event_register_callback(r_fr, MPI_T_CB_REQUIRE_NONE, MPI_INFO_NULL, (void *) 0, cb);
 
+    check_values = 1;
     /* self messages: Isend + Irecv + Waitall on MPI_COMM_SELF, no partner needed */
     for (k = 0; k < iters; ++k) {
         MPI_Request rq[2];
@@ -125,6 +190,7 @@ int main(int argc, char **argv)
         expect("persistent: freeing once per request", n_freeing - f0 == 2);
     }
 
+    check_values = 0;
     if (size >= 2) {                                           /* non-blocking collectives */
         long c0 = n_created, f0 = n_freeing;
         int buf = rank;
@@ -144,6 +210,16 @@ int main(int argc, char **argv)
     }
     expect("every freeing event matches a created event of the same token", 0 == n_unmatched);
     expect("every created request was freed", 0 == still_live);
+    if (pv_index >= 0) {
+        printf("INFO: request-bound PVAR pml_ob1_request_bytes: %ld reads in freeing handlers, %ld wrong, %ld failed\n",
+               n_pv_read, n_pv_wrong, n_pv_fail);
+        printf("INFO: values: 0 bytes %ld, 1 byte %ld, more %ld; sends read %ld (1 byte: %ld), receives read %ld (1 byte: %ld)\n",
+               n_pv_val[0], n_pv_val[1], n_pv_val[2], n_pv_kind[0], n_pv_ok_kind[0], n_pv_kind[1], n_pv_ok_kind[1]);
+        expect("request-bound PVAR: bound in the created handler, read in the freeing handler, value = 1 byte",
+               n_pv_read > 0 && 0 == n_pv_wrong && 0 == n_pv_fail);
+    } else {
+        printf("INFO: pml_ob1_request_bytes not available (other PML): PVAR part skipped\n");
+    }
     expect("kinds are send, receive or collective", 0 == n_bad_kind);
     printf("INFO: rank %d: %ld created, %ld freeing\n", rank, n_created, n_freeing);
 

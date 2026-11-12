@@ -358,3 +358,7 @@ Open MPI version v6.1.0
 - Added the MPI_T events ``ompi.mpi.request_created`` and ``ompi.mpi.request_freeing``, raised for the requests of
   non-blocking operations and persistent requests of the ``ob1`` and ``ucx`` PMLs and of ``libnbc``, so that a tool
   can follow requests that live too short to bind to.
+
+- MPI_T performance variables can now be bound to requests of the ``ob1`` PML and of the collective components (the
+  object validity check accepts the request classes the components derive from ``ompi_request_t``), and ``ob1``
+  provides the request-bound variable ``pml_ob1_request_bytes``.

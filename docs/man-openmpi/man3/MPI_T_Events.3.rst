@@ -479,6 +479,19 @@ request while it exists. They are not bound to an object.
    one-byte ``MPI_Isend``): that request is not an object of its own, has no unique token, and has no events. A
    tool must accept a request handle it never saw created.
 
+Binding a variable to a request
+"""""""""""""""""""""""""""""""
+
+A tool that wants a per-request value follows the pattern the two events make possible: in the handler of
+``ompi.mpi.request_created`` it constructs the ``MPI_Request`` handle from the ``request`` element and allocates a
+performance variable handle bound to it (``MPI_T_pvar_handle_alloc`` with an ``MPI_T_BIND_MPI_REQUEST`` variable); in
+the handler of ``ompi.mpi.request_freeing`` it reads the handle and frees it. The ``ob1`` PML provides
+``pml_ob1_request_bytes`` (class size, ``unsigned long long``): the bytes the request has moved; for a completed send
+the size of the message. It is a size and not a counter because request objects are recycled, so the value at bind
+time can be the one of the previous use. The value is only meaningful until the freeing handler returns. Other PMLs
+and the collective components do not provide such a variable yet; binding the variable to a request that is not an
+``ob1`` request fails.
+
 Request state events
 ^^^^^^^^^^^^^^^^^^^^
 

@@ -147,6 +147,41 @@ static int mca_pml_ob1_comm_size_notify (mca_base_pvar_t *pvar, mca_base_pvar_ev
     return OMPI_SUCCESS;
 }
 
+/* Request-bound PVAR (WP-C): bytes the request moved so far. It is a SIZE, not a COUNTER: a counter reports the change
+   since the handle was bound, and a request object is recycled, so the value at bind time (in the request_created
+   handler) can still be the value of its previous use. obj_handle is the request. The request must be an ob1
+   request: another PML's or a collective request has a different layout, so it is refused. Valid from the
+   request_created event until the request_freeing handler returns (the memory of an ob1 request stays valid in the
+   free list, the value is meaningless afterwards). */
+static int mca_pml_ob1_get_request_bytes (const struct mca_base_pvar_t *pvar, void *value, void *obj_handle)
+{
+    ompi_request_t *req = (ompi_request_t *) obj_handle;
+    mca_pml_base_request_t *base = (mca_pml_base_request_t *) obj_handle;
+
+    if (NULL == req || !mca_pml_ob1.enabled || OMPI_REQUEST_PML != req->req_type) {
+        return OPAL_ERR_BAD_PARAM;
+    }
+    if (MCA_PML_REQUEST_SEND == base->req_type) {
+        mca_pml_ob1_send_request_t *sreq = (mca_pml_ob1_send_request_t *) base;
+        /* an eager send never advances req_bytes_delivered: once the request is complete the whole message is out */
+        *(unsigned long long *) value = REQUEST_COMPLETE(req) ? (unsigned long long) sreq->req_send.req_bytes_packed
+                                                              : (unsigned long long) sreq->req_bytes_delivered;
+    } else if (MCA_PML_REQUEST_RECV == base->req_type) {
+        *(unsigned long long *) value = (unsigned long long) ((mca_pml_ob1_recv_request_t *) base)->req_bytes_received;
+    } else {
+        return OPAL_ERR_BAD_PARAM;
+    }
+    return OMPI_SUCCESS;
+}
+
+static int mca_pml_ob1_request_notify (mca_base_pvar_t *pvar, mca_base_pvar_event_t event, void *obj_handle, int *count)
+{
+    if (MCA_BASE_PVAR_HANDLE_BIND == event) {
+        *count = 1;
+    }
+    return OMPI_SUCCESS;
+}
+
 static int mca_pml_ob1_get_unex_msgq_size (const struct mca_base_pvar_t *pvar, void *value, void *obj_handle)
 {
     ompi_communicator_t *comm = (ompi_communicator_t *) obj_handle;
@@ -246,6 +281,15 @@ static int mca_pml_ob1_component_register(void)
                                            MCA_BASE_VAR_TYPE_UNSIGNED_INT, NULL, MPI_T_BIND_MPI_COMM,
                                            MCA_BASE_PVAR_FLAG_READONLY | MCA_BASE_PVAR_FLAG_CONTINUOUS,
                                            mca_pml_ob1_get_posted_recvq_size, NULL, mca_pml_ob1_comm_size_notify, NULL);
+
+    (void)mca_base_component_pvar_register(&mca_pml_ob1_component.pmlm_version,
+                                           "request_bytes", "Bytes moved so far by a point-to-point request "
+                                           "(bound to an MPI_Request; read it in the request_freeing handler "
+                                           "of the MPI_T request lifetime events)", OPAL_INFO_LVL_4,
+                                           MPI_T_PVAR_CLASS_SIZE, MCA_BASE_VAR_TYPE_UNSIGNED_LONG_LONG, NULL,
+                                           MPI_T_BIND_MPI_REQUEST,
+                                           MCA_BASE_PVAR_FLAG_READONLY | MCA_BASE_PVAR_FLAG_CONTINUOUS,
+                                           mca_pml_ob1_get_request_bytes, NULL, mca_pml_ob1_request_notify, NULL);
 
     mca_pml_ob1_accelerator_events_max = 400;
     (void) mca_base_component_var_register(&mca_pml_ob1_component.pmlm_version, "accelerator_events_max",

@@ -21,6 +21,7 @@
  */
 
 #include "ompi/mpi/tool/mpit-internal.h"
+#include "ompi/request/request.h"
 
 #include "opal/mca/threads/thread_usage.h"
 
@@ -283,10 +284,15 @@ OMPI_HIDDEN bool ompit_obj_invalid(void *obj_handle)
         goto fn_exit;
     }
 
-    if (0 == strncmp(obj_name, "ompi_request_t", strlen("ompi_request_t"))) {
-        ompi_request_t *request = (ompi_request_t *) opal_obj;
-        ret = (MPI_REQUEST_NULL == request) ? true : false;
-        goto fn_exit;
+    /* A request is an ompi_request_t or an object of a class derived from it: the point-to-point and collective
+       components embed ompi_request_t in their own request classes (for example mca_pml_ob1_send_request_t,
+       ompi_coll_libnbc_request_t), and a tool binds to those through an MPI_Request handle. */
+    for (opal_class_t *c = opal_class; NULL != c; c = c->cls_parent) {
+        if (c == OBJ_CLASS(ompi_request_t)) {
+            ompi_request_t *request = (ompi_request_t *) opal_obj;
+            ret = (MPI_REQUEST_NULL == request) ? true : false;
+            goto fn_exit;
+        }
     }
 
     if (0 == strncmp(obj_name, "ompi_errhandler_t", strlen("ompi_errhandler_t"))) {
