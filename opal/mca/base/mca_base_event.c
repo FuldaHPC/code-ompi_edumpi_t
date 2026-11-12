@@ -429,6 +429,18 @@ int mca_base_event_register(const char *project, const char *framework, const ch
     event->num_elements = num_elements;
     event->buffer_size = buffer_size;
     event->data_extent = data_extent;
+    {   /* dense: every element starts where the previous one ended and the last ends at data_extent */
+        size_t pos = 0;
+        bool dense = true;
+        for (int k = 0; k < num_elements; ++k) {
+            if ((size_t) element_offsets[k] != pos) {
+                dense = false;
+                break;
+            }
+            pos += ompi_var_type_sizes[element_types[k]];
+        }
+        event->dense_layout = dense && pos == data_extent;
+    }
     event->verbosity = verbosity;
     event->enumerator = enumerator;
     if (NULL != enumerator) {

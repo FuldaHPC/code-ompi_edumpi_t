@@ -202,6 +202,7 @@ typedef struct mca_base_event_t {
     size_t                          data_extent;       /* un-rounded element extent; bounds the
                                                           raise/copy memcpys (buffer_size's pad is
                                                           never read or written across the API) */
+    bool                            dense_layout;      /* elements tile data_extent without padding: copy is one memcpy */
     mca_base_var_enum_t            *enumerator;        /* optional */
     int                             bind;              /* MCA_BASE_VAR_BIND_* */
     mca_base_event_source_t        *source;            /* single-source invariant */

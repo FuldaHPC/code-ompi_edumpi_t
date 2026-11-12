@@ -323,6 +323,7 @@ static void update_num_active(mca_base_event_registration_t *reg, bool was_activ
    referenced by reg->callbacks[]/dropped_slot, so reusing each object's super
    list item here is safe. */
 typedef struct {
+    bool ready;                 /* the lists are constructed only when something is collected (common case: never) */
     opal_list_t cb_slots;
     opal_list_t dropped_slots;
     opal_list_t regs;
@@ -330,9 +331,17 @@ typedef struct {
 
 static void to_free_init(to_free_t *tf)
 {
-    OBJ_CONSTRUCT(&tf->cb_slots, opal_list_t);
-    OBJ_CONSTRUCT(&tf->dropped_slots, opal_list_t);
-    OBJ_CONSTRUCT(&tf->regs, opal_list_t);
+    tf->ready = false;
+}
+
+static inline void to_free_ensure(to_free_t *tf)
+{
+    if (OPAL_UNLIKELY(!tf->ready)) {
+        OBJ_CONSTRUCT(&tf->cb_slots, opal_list_t);
+        OBJ_CONSTRUCT(&tf->dropped_slots, opal_list_t);
+        OBJ_CONSTRUCT(&tf->regs, opal_list_t);
+        tf->ready = true;
+    }
 }
 
 static void release_cb_slot(mca_base_event_cb_t *slot, to_free_t *tf)
@@ -341,6 +350,7 @@ static void release_cb_slot(mca_base_event_cb_t *slot, to_free_t *tf)
         return;
     }
     if (0 == opal_atomic_sub_fetch_32(&slot->refcount, 1) && slot->dead) {
+        to_free_ensure(tf);
         opal_list_append(&tf->cb_slots, &slot->super);
     }
 }
@@ -351,6 +361,7 @@ static void release_dropped_slot(mca_base_event_dropped_cb_t *slot, to_free_t *t
         return;
     }
     if (0 == opal_atomic_sub_fetch_32(&slot->refcount, 1) && slot->dead) {
+        to_free_ensure(tf);
         opal_list_append(&tf->dropped_slots, &slot->super);
     }
 }
@@ -361,6 +372,7 @@ static void release_reg(mca_base_event_registration_t *reg, to_free_t *tf)
         return;
     }
     if (0 == opal_atomic_sub_fetch_32(&reg->refcount, 1) && reg->dead) {
+        to_free_ensure(tf);
         opal_list_append(&tf->regs, &reg->super);
     }
 }
@@ -370,6 +382,10 @@ static void release_reg(mca_base_event_registration_t *reg, to_free_t *tf)
 static void process_to_free(to_free_t *tf)
 {
     opal_list_item_t *item;
+
+    if (OPAL_LIKELY(!tf->ready)) {
+        return;
+    }
 
     while (NULL != (item = opal_list_remove_first(&tf->cb_slots))) {
         mca_base_event_cb_t *slot = (mca_base_event_cb_t *) item;
@@ -939,6 +955,10 @@ int mca_base_event_copy(mca_base_event_instance_t *inst, void *buf)
        what the caller sized buf from via MPI_T_event_get_info -- NOT the internal
        8-byte-rounded buffer_size, or the trailing rounding pad would overflow the
        caller's buffer. */
+    if (event->dense_layout) {          /* no padding anywhere: one copy */
+        memcpy(buf, inst->data, event->data_extent);
+        return OPAL_SUCCESS;
+    }
     memset(buf, 0, event->data_extent);
     for (i = 0; i < event->num_elements; ++i) {
         size_t tsize = ompi_var_type_sizes[event->element_types[i]];
