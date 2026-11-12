@@ -10,6 +10,7 @@
  */
 
 #include "coll_ucc_common.h"
+#include "ompi/mca/coll/base/coll_base_events.h"
 
 static inline ucc_status_t
 mca_coll_ucc_bcast_init_common(void *buf, size_t count, struct ompi_datatype_t *dtype,
@@ -50,6 +51,8 @@ int mca_coll_ucc_bcast(void *buf, size_t count, struct ompi_datatype_t *dtype,
                        int root, struct ompi_communicator_t *comm,
                        mca_coll_base_module_t *module)
 {
+    mca_coll_base_event_raise_algorithm(comm, MCA_COLL_BASE_EVENT_COMPONENT_UCC, BCAST, 1,
+                                        count, dtype, root, NULL);
     mca_coll_ucc_module_t *ucc_module = (mca_coll_ucc_module_t*)module;
     ucc_coll_req_h         req;
     UCC_VERBOSE(3, "running ucc bcast");

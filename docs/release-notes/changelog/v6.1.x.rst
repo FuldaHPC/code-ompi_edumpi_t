@@ -346,6 +346,6 @@ Open MPI version v6.1.0
   the PML in use and are raised by the ``ob1`` and ``ucx`` PMLs.
 
 - Added the MPI_T event ``ompi.coll_algorithm_selected``.  It reports
-  which algorithm the ``tuned``, ``libnbc`` and ``han`` collective
-  components chose for an operation, including the algorithms ``han``
+  which algorithm the ``tuned``, ``libnbc``, ``han``, ``basic``,
+  ``adapt``, ``xhc``, ``acoll`` and ``ucc`` collective components chose for an operation, including the algorithms ``han``
   runs on its inter-node and intra-node helper communicators.

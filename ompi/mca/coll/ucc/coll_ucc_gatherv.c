@@ -11,6 +11,7 @@
  */
 
 #include "coll_ucc_common.h"
+#include "ompi/mca/coll/base/coll_base_events.h"
 
 static inline ucc_status_t
 mca_coll_ucc_gatherv_init_common(const void *sbuf, size_t scount, struct ompi_datatype_t *sdtype,
@@ -83,6 +84,8 @@ int mca_coll_ucc_gatherv(const void *sbuf, size_t scount, struct ompi_datatype_t
                          struct ompi_communicator_t *comm,
                          mca_coll_base_module_t *module)
 {
+    mca_coll_base_event_raise_algorithm(comm, MCA_COLL_BASE_EVENT_COMPONENT_UCC, GATHERV, 1,
+                                        scount, sdtype, root, NULL);
     mca_coll_ucc_module_t *ucc_module = (mca_coll_ucc_module_t*)module;
     ucc_coll_req_h         req;
 

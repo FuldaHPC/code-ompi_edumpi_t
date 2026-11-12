@@ -10,6 +10,7 @@
  */
 
 #include "coll_ucc_common.h"
+#include "ompi/mca/coll/base/coll_base_events.h"
 
 static inline ucc_status_t mca_coll_ucc_barrier_init_common(bool persistent, mca_coll_ucc_module_t *ucc_module,
                                                             ucc_coll_req_h *req,
@@ -34,6 +35,8 @@ fallback:
 int mca_coll_ucc_barrier(struct ompi_communicator_t *comm,
                          mca_coll_base_module_t *module)
 {
+    mca_coll_base_event_raise_algorithm(comm, MCA_COLL_BASE_EVENT_COMPONENT_UCC, BARRIER, 1,
+                                        0, NULL, -1, NULL);
     mca_coll_ucc_module_t *ucc_module = (mca_coll_ucc_module_t*)module;
     ucc_coll_req_h         req;
 

@@ -10,6 +10,7 @@
  */
 
 #include "ompi_config.h"
+#include "ompi/mca/coll/base/coll_base_events.h"
 #include "mpi.h"
 
 #include "ompi/constants.h"
@@ -417,6 +418,8 @@ static void xhc_bcast_fini(xhc_bcast_ctx_t *ctx) {
 int mca_coll_xhc_bcast(void *buf, size_t count, ompi_datatype_t *datatype,
     int root, ompi_communicator_t *ompi_comm, mca_coll_base_module_t *ompi_module)
 {
+    mca_coll_base_event_raise_algorithm(ompi_comm, MCA_COLL_BASE_EVENT_COMPONENT_XHC, BCAST, 1,
+                                        count, datatype, root, NULL);
     xhc_module_t *module = (xhc_module_t *) ompi_module;
 
     // ---

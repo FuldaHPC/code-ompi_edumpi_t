@@ -22,6 +22,7 @@
  */
 
 #include "ompi_config.h"
+#include "ompi/mca/coll/base/coll_base_events.h"
 #include "coll_basic.h"
 
 #include "mpi.h"
@@ -48,6 +49,8 @@ mca_coll_basic_scatter_inter(const void *sbuf, size_t scount,
                              int root, struct ompi_communicator_t *comm,
                              mca_coll_base_module_t *module)
 {
+    mca_coll_base_event_raise_algorithm(comm, MCA_COLL_BASE_EVENT_COMPONENT_BASIC, SCATTER, 3,
+                                        scount, sdtype, root, NULL);
     int i, size, err;
     char *ptmp;
     ptrdiff_t lb, incr;

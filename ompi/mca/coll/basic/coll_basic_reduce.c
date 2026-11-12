@@ -22,6 +22,7 @@
  */
 
 #include "ompi_config.h"
+#include "ompi/mca/coll/base/coll_base_events.h"
 #include "coll_basic.h"
 
 #include <stdio.h>
@@ -93,6 +94,8 @@ mca_coll_basic_reduce_log_intra(const void *sbuf, void *rbuf, size_t count,
                                 int root, struct ompi_communicator_t *comm,
                                 mca_coll_base_module_t *module)
 {
+    mca_coll_base_event_raise_algorithm(comm, MCA_COLL_BASE_EVENT_COMPONENT_BASIC, REDUCE, 2,
+                                        count, dtype, root, NULL);
     int i, size, rank, vrank;
     int err, peer, dim, mask;
     ptrdiff_t lb, extent, dsize, gap;
@@ -293,6 +296,8 @@ mca_coll_basic_reduce_lin_inter(const void *sbuf, void *rbuf, size_t count,
                                 int root, struct ompi_communicator_t *comm,
                                 mca_coll_base_module_t *module)
 {
+    mca_coll_base_event_raise_algorithm(comm, MCA_COLL_BASE_EVENT_COMPONENT_BASIC, REDUCE, 3,
+                                        count, dtype, root, NULL);
     int i, err, size;
     ptrdiff_t dsize, gap;
     char *free_buffer = NULL;

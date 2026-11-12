@@ -10,6 +10,7 @@
  */
 
 #include "ompi_config.h"
+#include "ompi/mca/coll/base/coll_base_events.h"
 
 
 #include "mpi.h"
@@ -466,6 +467,8 @@ int mca_coll_acoll_allgather(const void *sbuf, size_t scount, struct ompi_dataty
                              void *rbuf, size_t rcount, struct ompi_datatype_t *rdtype,
                              struct ompi_communicator_t *comm, mca_coll_base_module_t *module)
 {
+    mca_coll_base_event_raise_algorithm(comm, MCA_COLL_BASE_EVENT_COMPONENT_ACOLL, ALLGATHER, 1,
+                                        scount, sdtype, -1, NULL);
     int i;
     int err;
     int size;

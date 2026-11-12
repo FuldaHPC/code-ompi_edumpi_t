@@ -10,6 +10,7 @@
  */
 
 #include "ompi_config.h"
+#include "ompi/mca/coll/base/coll_base_events.h"
 #include "mpi.h"
 
 #include "ompi/constants.h"
@@ -67,6 +68,8 @@ static void xhc_barrier_leader(xhc_comm_t *comms, xhc_peer_info_t *peer_info,
  * ----------------------------------------------------------------- */
 int mca_coll_xhc_barrier(ompi_communicator_t *ompi_comm,
         mca_coll_base_module_t *ompi_module) {
+    mca_coll_base_event_raise_algorithm(ompi_comm, MCA_COLL_BASE_EVENT_COMPONENT_XHC, BARRIER, 1,
+                                        0, NULL, -1, NULL);
 
     xhc_module_t *module = (xhc_module_t *) ompi_module;
 

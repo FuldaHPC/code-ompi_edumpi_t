@@ -21,6 +21,7 @@
  */
 
 #include "ompi_config.h"
+#include "ompi/mca/coll/base/coll_base_events.h"
 #include "coll_basic.h"
 
 #include "mpi.h"
@@ -45,6 +46,8 @@ mca_coll_basic_gatherv_intra(const void *sbuf, size_t scount,
                              struct ompi_communicator_t *comm,
                              mca_coll_base_module_t *module)
 {
+    mca_coll_base_event_raise_algorithm(comm, MCA_COLL_BASE_EVENT_COMPONENT_BASIC, GATHERV, 1,
+                                        scount, sdtype, root, NULL);
     int err, i, peer, rank, size;
     char *ptmp;
     ptrdiff_t lb, extent;
@@ -154,6 +157,8 @@ mca_coll_basic_gatherv_inter(const void *sbuf, size_t scount,
                              struct ompi_communicator_t *comm,
                              mca_coll_base_module_t *module)
 {
+    mca_coll_base_event_raise_algorithm(comm, MCA_COLL_BASE_EVENT_COMPONENT_BASIC, GATHERV, 3,
+                                        scount, sdtype, root, NULL);
     int i, size, err;
     char *ptmp;
     ptrdiff_t lb, extent;

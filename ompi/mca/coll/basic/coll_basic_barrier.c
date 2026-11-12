@@ -20,6 +20,7 @@
  */
 
 #include "ompi_config.h"
+#include "ompi/mca/coll/base/coll_base_events.h"
 #include "coll_basic.h"
 
 #include "mpi.h"
@@ -42,6 +43,8 @@ int
 mca_coll_basic_barrier_intra_log(struct ompi_communicator_t *comm,
                                  mca_coll_base_module_t *module)
 {
+    mca_coll_base_event_raise_algorithm(comm, MCA_COLL_BASE_EVENT_COMPONENT_BASIC, BARRIER, 2,
+                                        0, NULL, -1, NULL);
     int i;
     int err;
     int peer;
@@ -124,6 +127,8 @@ int
 mca_coll_basic_barrier_inter_lin(struct ompi_communicator_t *comm,
                                  mca_coll_base_module_t *module)
 {
+    mca_coll_base_event_raise_algorithm(comm, MCA_COLL_BASE_EVENT_COMPONENT_BASIC, BARRIER, 3,
+                                        0, NULL, -1, NULL);
     int rank;
     int result;
 

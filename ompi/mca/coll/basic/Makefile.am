@@ -25,6 +25,7 @@
 
 sources = \
         coll_basic.h \
+        coll_basic_linear.c \
         coll_basic_allgather.c \
         coll_basic_allgatherv.c \
         coll_basic_allreduce.c \

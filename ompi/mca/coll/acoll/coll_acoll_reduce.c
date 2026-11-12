@@ -10,6 +10,7 @@
  */
 
 #include "ompi_config.h"
+#include "ompi/mca/coll/base/coll_base_events.h"
 
 #include "mpi.h"
 #include "ompi/constants.h"
@@ -351,6 +352,8 @@ int mca_coll_acoll_reduce_intra(const void *sbuf, void *rbuf, size_t count,
                                 struct ompi_datatype_t *dtype, struct ompi_op_t *op, int root,
                                 struct ompi_communicator_t *comm, mca_coll_base_module_t *module)
 {
+    mca_coll_base_event_raise_algorithm(comm, MCA_COLL_BASE_EVENT_COMPONENT_ACOLL, REDUCE, 1,
+                                        count, dtype, root, NULL);
     int size, alg;
     int num_nodes, ret;
     size_t total_dsize, dsize;

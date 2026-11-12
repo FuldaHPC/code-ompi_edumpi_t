@@ -10,6 +10,7 @@
  */
 
 #include "coll_ucc_common.h"
+#include "ompi/mca/coll/base/coll_base_events.h"
 
 static inline ucc_status_t
 mca_coll_ucc_reduce_scatter_init_common(const void *sbuf, void *rbuf, ompi_count_array_t rcounts,
@@ -82,6 +83,8 @@ int mca_coll_ucc_reduce_scatter(const void *sbuf, void *rbuf, ompi_count_array_t
                                 struct ompi_communicator_t *comm,
                                 mca_coll_base_module_t *module)
 {
+    mca_coll_base_event_raise_algorithm(comm, MCA_COLL_BASE_EVENT_COMPONENT_UCC, REDUCESCATTER, 1,
+                                        0, dtype, -1, NULL);
     mca_coll_ucc_module_t *ucc_module = (mca_coll_ucc_module_t*)module;
     ucc_coll_req_h         req;
 

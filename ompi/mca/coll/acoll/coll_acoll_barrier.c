@@ -10,6 +10,7 @@
  */
 
 #include "ompi_config.h"
+#include "ompi/mca/coll/base/coll_base_events.h"
 
 
 #include "mpi.h"
@@ -245,6 +246,8 @@ int mca_coll_acoll_barrier_shm_f(struct ompi_communicator_t *comm, mca_coll_base
  */
 int mca_coll_acoll_barrier_intra(struct ompi_communicator_t *comm, mca_coll_base_module_t *module)
 {
+    mca_coll_base_event_raise_algorithm(comm, MCA_COLL_BASE_EVENT_COMPONENT_ACOLL, BARRIER, 1,
+                                        0, NULL, -1, NULL);
     int size, ssize, bsize;
     int err = MPI_SUCCESS;
     int nreqs = 0;

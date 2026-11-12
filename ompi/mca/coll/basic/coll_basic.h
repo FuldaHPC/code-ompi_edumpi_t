@@ -257,6 +257,19 @@ struct mca_coll_basic_module_t {
 typedef struct mca_coll_basic_module_t mca_coll_basic_module_t;
 OMPI_DECLSPEC OBJ_CLASS_DECLARATION(mca_coll_basic_module_t);
 
+/* thin wrappers around the linear base algorithms that report the MPI_T event */
+int mca_coll_basic_barrier_intra_linear(struct ompi_communicator_t *comm, mca_coll_base_module_t *module);
+int mca_coll_basic_bcast_intra_linear(void *buffer, size_t count, struct ompi_datatype_t *datatype, int root, struct ompi_communicator_t *comm, mca_coll_base_module_t *module);
+int mca_coll_basic_reduce_intra_linear(const void *sendbuf, void *recvbuf, size_t count, struct ompi_datatype_t *datatype, struct ompi_op_t *op, int root, struct ompi_communicator_t *comm, mca_coll_base_module_t *module);
+int mca_coll_basic_allgather_intra_linear(const void *sendbuf, size_t sendcount, struct ompi_datatype_t *sendtype, void *recvbuf, size_t recvcount, struct ompi_datatype_t *recvtype, struct ompi_communicator_t *comm, mca_coll_base_module_t *module);
+int mca_coll_basic_allgatherv_intra_linear(const void *sendbuf, size_t sendcount, struct ompi_datatype_t *sendtype, void *recvbuf, ompi_count_array_t recvcounts, ompi_disp_array_t displs, struct ompi_datatype_t *recvtype, struct ompi_communicator_t *comm, mca_coll_base_module_t *module);
+int mca_coll_basic_alltoall_intra_linear(const void *sendbuf, size_t sendcount, struct ompi_datatype_t *sendtype, void *recvbuf, size_t recvcount, struct ompi_datatype_t *recvtype, struct ompi_communicator_t *comm, mca_coll_base_module_t *module);
+int mca_coll_basic_alltoallv_intra_linear(const void *sendbuf, ompi_count_array_t sendcounts, ompi_disp_array_t sdispls, struct ompi_datatype_t *sendtype, void *recvbuf, ompi_count_array_t recvcounts, ompi_disp_array_t rdispls, struct ompi_datatype_t *recvtype, struct ompi_communicator_t *comm, mca_coll_base_module_t *module);
+int mca_coll_basic_exscan_intra_linear(const void *sendbuf, void *recvbuf, size_t count, struct ompi_datatype_t *datatype, struct ompi_op_t *op, struct ompi_communicator_t *comm, mca_coll_base_module_t *module);
+int mca_coll_basic_gather_intra_linear(const void *sendbuf, size_t sendcount, struct ompi_datatype_t *sendtype, void *recvbuf, size_t recvcount, struct ompi_datatype_t *recvtype, int root, struct ompi_communicator_t *comm, mca_coll_base_module_t *module);
+int mca_coll_basic_scan_intra_linear(const void *sendbuf, void *recvbuf, size_t count, struct ompi_datatype_t *datatype, struct ompi_op_t *op, struct ompi_communicator_t *comm, mca_coll_base_module_t *module);
+int mca_coll_basic_scatter_intra_linear(const void *sendbuf, size_t sendcount, struct ompi_datatype_t *sendtype, void *recvbuf, size_t recvcount, struct ompi_datatype_t *recvtype, int root, struct ompi_communicator_t *comm, mca_coll_base_module_t *module);
+
 END_C_DECLS
 
 #endif /* MCA_COLL_BASIC_EXPORT_H */

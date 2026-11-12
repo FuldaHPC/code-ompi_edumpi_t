@@ -10,6 +10,7 @@
  */
 
 #include "ompi_config.h"
+#include "ompi/mca/coll/base/coll_base_events.h"
 
 #include "mpi.h"
 #include "ompi/constants.h"
@@ -41,6 +42,8 @@ int mca_coll_acoll_gather_intra(const void *sbuf, size_t scount, struct ompi_dat
                                 void *rbuf, size_t rcount, struct ompi_datatype_t *rdtype, int root,
                                 struct ompi_communicator_t *comm, mca_coll_base_module_t *module)
 {
+    mca_coll_base_event_raise_algorithm(comm, MCA_COLL_BASE_EVENT_COMPONENT_ACOLL, GATHER, 1,
+                                        scount, sdtype, root, NULL);
     int i, err, rank, size;
     char *wkg = NULL, *workbuf = NULL;
     MPI_Status status;

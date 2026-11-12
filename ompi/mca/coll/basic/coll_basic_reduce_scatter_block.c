@@ -25,6 +25,7 @@
  */
 
 #include "ompi_config.h"
+#include "ompi/mca/coll/base/coll_base_events.h"
 #include "coll_basic.h"
 
 #include <stdio.h>
@@ -60,6 +61,8 @@ mca_coll_basic_reduce_scatter_block_intra(const void *sbuf, void *rbuf, size_t r
                                           struct ompi_communicator_t *comm,
                                           mca_coll_base_module_t *module)
 {
+    mca_coll_base_event_raise_algorithm(comm, MCA_COLL_BASE_EVENT_COMPONENT_BASIC, REDUCESCATTERBLOCK, 1,
+                                        rcount, dtype, -1, NULL);
     return ompi_coll_base_reduce_scatter_block_basic_linear(sbuf, rbuf, rcount, dtype, op, comm, module);
 }
 
@@ -77,6 +80,8 @@ mca_coll_basic_reduce_scatter_block_inter(const void *sbuf, void *rbuf, size_t r
                                           struct ompi_communicator_t *comm,
                                           mca_coll_base_module_t *module)
 {
+    mca_coll_base_event_raise_algorithm(comm, MCA_COLL_BASE_EVENT_COMPONENT_BASIC, REDUCESCATTERBLOCK, 3,
+                                        rcount, dtype, -1, NULL);
     int err, i, rank, root = 0, rsize, lsize;
     int totalcounts;
     ptrdiff_t gap, span;

@@ -17,6 +17,7 @@
 #include "ompi_config.h"
 #include "ompi/communicator/communicator.h"
 #include "coll_adapt.h"
+#include "ompi/mca/coll/base/coll_base_events.h"
 #include "coll_adapt_algorithms.h"
 #include "coll_adapt_context.h"
 #include "coll_adapt_item.h"
@@ -508,10 +509,17 @@ int ompi_coll_adapt_ireduce(const void *sbuf, void *rbuf, size_t count, struct o
     }
 
 
-    return ompi_coll_adapt_ireduce_generic(sbuf, rbuf, count, dtype, op, root, comm, request, module,
+    int adapt_rc = ompi_coll_adapt_ireduce_generic(sbuf, rbuf, count, dtype, op, root, comm, request, module,
                                            ompi_coll_adapt_module_cached_topology(module, comm, root,
                                         		                                            mca_coll_adapt_component.adapt_ireduce_algorithm),
                                            mca_coll_adapt_component.adapt_ireduce_segment_size);
+    if (OPAL_UNLIKELY(OMPI_SUCCESS == adapt_rc && NULL != request)) {
+        /* algorithm: the tree type of the adapt_ireduce_algorithm parameter */
+        mca_coll_base_event_raise_algorithm(comm, MCA_COLL_BASE_EVENT_COMPONENT_ADAPT, REDUCE, 
+                                            mca_coll_adapt_component.adapt_ireduce_algorithm,
+                                            count, dtype, root, *request);
+    }
+    return adapt_rc;
 
 }
 

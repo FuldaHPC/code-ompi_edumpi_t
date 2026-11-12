@@ -10,6 +10,7 @@
  */
 
 #include "ompi_config.h"
+#include "ompi/mca/coll/base/coll_base_events.h"
 #include "mpi.h"
 
 #include <math.h>
@@ -1884,6 +1885,8 @@ _fallback:
 int mca_coll_xhc_allreduce(const void *sbuf, void *rbuf,
         size_t count, ompi_datatype_t *datatype, ompi_op_t *op,
         ompi_communicator_t *ompi_comm, mca_coll_base_module_t *ompi_module) {
+    mca_coll_base_event_raise_algorithm(ompi_comm, MCA_COLL_BASE_EVENT_COMPONENT_XHC, ALLREDUCE, 1,
+                                        count, datatype, -1, NULL);
 
     xhc_module_t *module = (xhc_module_t *) ompi_module;
 

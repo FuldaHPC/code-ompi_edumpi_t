@@ -442,7 +442,13 @@ Collective algorithm event
    ``tuned`` does not report algorithm 0 (that value asks for the built-in
    decision, which then reports the final choice). ``libnbc`` reports ``ibcast``,
    ``iallreduce``, ``ireduce`` and ``iallgather``; other operations are not
-   reported yet.
+   reported yet. ``basic`` reports its blocking operations with 1 (linear),
+   2 (logarithmic) or 3 (inter-communicator). ``adapt`` reports ``ibcast`` and
+   ``ireduce`` (and the blocking ``bcast`` and ``reduce``, which use them) with
+   the value of its ``adapt_ibcast_algorithm`` / ``adapt_ireduce_algorithm``
+   parameter (the tree type) and the request. ``xhc``, ``acoll`` and ``ucc``
+   report each blocking operation they handle with 1, because the algorithm
+   choice happens inside the component.
 
    The ``han`` component runs further collectives on helper communicators. Their
    events are delivered to registrations on the user's communicator, with

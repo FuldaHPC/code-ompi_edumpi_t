@@ -25,6 +25,7 @@
  */
 
 #include "ompi_config.h"
+#include "ompi/mca/coll/base/coll_base_events.h"
 #include "coll_basic.h"
 
 #include "mpi.h"
@@ -50,6 +51,8 @@ mca_coll_basic_alltoallv_inter(const void *sbuf, ompi_count_array_t scounts, omp
                                struct ompi_communicator_t *comm,
                                mca_coll_base_module_t *module)
 {
+    mca_coll_base_event_raise_algorithm(comm, MCA_COLL_BASE_EVENT_COMPONENT_BASIC, ALLTOALLV, 3,
+                                        0, sdtype, -1, NULL);
     int i;
     int rsize;
     int err;

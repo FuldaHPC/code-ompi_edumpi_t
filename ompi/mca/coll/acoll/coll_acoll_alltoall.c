@@ -9,6 +9,7 @@
  */
 
 #include "ompi_config.h"
+#include "ompi/mca/coll/base/coll_base_events.h"
 
 #include "mpi.h"
 #include "ompi/constants.h"
@@ -451,6 +452,8 @@ int mca_coll_acoll_alltoall
                         struct ompi_communicator_t *comm,
                         mca_coll_base_module_t *module)
 {
+    mca_coll_base_event_raise_algorithm(comm, MCA_COLL_BASE_EVENT_COMPONENT_ACOLL, ALLTOALL, 1,
+                                        scount, sdtype, -1, NULL);
     int rank = ompi_comm_rank(comm);
     int size = ompi_comm_size(comm);
     int error = MPI_SUCCESS;

@@ -21,6 +21,7 @@
  */
 
 #include "ompi_config.h"
+#include "ompi/mca/coll/base/coll_base_events.h"
 #include "coll_basic.h"
 
 #include "mpi.h"
@@ -48,6 +49,8 @@ mca_coll_basic_allreduce_intra(const void *sbuf, void *rbuf, size_t count,
                                struct ompi_communicator_t *comm,
                                mca_coll_base_module_t *module)
 {
+    mca_coll_base_event_raise_algorithm(comm, MCA_COLL_BASE_EVENT_COMPONENT_BASIC, ALLREDUCE, 1,
+                                        count, dtype, -1, NULL);
     int err;
 
     /* Reduce to 0 and broadcast. */
@@ -83,6 +86,8 @@ mca_coll_basic_allreduce_inter(const void *sbuf, void *rbuf, size_t count,
                                struct ompi_communicator_t *comm,
                                mca_coll_base_module_t *module)
 {
+    mca_coll_base_event_raise_algorithm(comm, MCA_COLL_BASE_EVENT_COMPONENT_BASIC, ALLREDUCE, 3,
+                                        count, dtype, -1, NULL);
     int err, i, rank, root = 0, rsize, line;
     ptrdiff_t extent, dsize, gap;
     char *tmpbuf = NULL, *pml_buffer = NULL;
