@@ -354,6 +354,13 @@ static inline void mca_pml_ucx_event_recv_complete(ompi_communicator_t *comm, co
                                       length, flags);
 }
 
+/* A receive that matches an unexpected message completes inside the call that posts it: the completion callback runs
+   before the request pointer is known to the poster. The callback then does not raise recv_complete; it records the
+   request here and the poster raises recv_start, request_created and recv_complete in this order, so that a tool sees
+   the events of a request in the order of its life. */
+extern _Thread_local int mca_pml_ucx_in_post;
+extern _Thread_local const void *mca_pml_ucx_skipped_complete;
+
 OBJ_CLASS_DECLARATION(mca_pml_ucx_persistent_request_t);
 
 

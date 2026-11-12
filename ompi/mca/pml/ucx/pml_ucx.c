@@ -653,6 +653,7 @@ int mca_pml_ucx_irecv(void *buf, size_t count, ompi_datatype_t *datatype,
                        (void*)request);
 
     PML_UCX_MAKE_RECV_TAG(ucp_tag, ucp_tag_mask, tag, src, comm);
+    mca_pml_ucx_in_post = 1;
 #if HAVE_DECL_UCP_TAG_RECV_NBX
     req = (ompi_request_t*)ucp_tag_recv_nbx(ompi_pml_ucx.ucp_worker, buf,
                                             mca_pml_ucx_get_data_size(op_data, count),
@@ -663,15 +664,28 @@ int mca_pml_ucx_irecv(void *buf, size_t count, ompi_datatype_t *datatype,
                                            ucp_tag, ucp_tag_mask,
                                            mca_pml_ucx_recv_completion);
 #endif
+    mca_pml_ucx_in_post = 0;
     if (UCS_PTR_IS_ERR(req)) {
+        mca_pml_ucx_skipped_complete = NULL;
         PML_UCX_ERROR("ucx recv failed: %s", ucs_status_string(UCS_PTR_STATUS(req)));
         return OMPI_ERROR;
     }
 
     PML_UCX_VERBOSE(8, "got request %p", (void*)req);
-    /* an immediate match may already have raised recv_complete for this token */
     mca_pml_ucx_event_start(MCA_PML_BASE_EVENT_RECV_START, comm, req, src, tag, count, datatype, 0);
     ompi_mpit_raise_request_handle(1, comm, req, OMPI_REQUEST_KIND_PML_RECV, 0);
+    if (OPAL_UNLIKELY(mca_pml_ucx_skipped_complete == (const void *) req)) {
+        /* matched immediately: the completion callback ran inside the post call and left the event to us */
+        int cflags = 0;
+        mca_pml_ucx_skipped_complete = NULL;
+        if (MPI_ERR_TRUNCATE == req->req_status.MPI_ERROR) {
+            cflags = MCA_PML_BASE_EVENT_COMPLETE_TRUNCATED | MCA_PML_BASE_EVENT_COMPLETE_ERROR;
+        } else if (req->req_status._cancelled) {
+            cflags = MCA_PML_BASE_EVENT_COMPLETE_CANCELLED;
+        }
+        mca_pml_base_event_raise_complete(MCA_PML_BASE_EVENT_RECV_COMPLETE, comm, req, req->req_status.MPI_SOURCE,
+                                          req->req_status.MPI_TAG, req->req_status._ucount, cflags);
+    }
     req->req_mpi_object.comm = comm;
     *request                 = req;
     return OMPI_SUCCESS;

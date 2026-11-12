@@ -22,6 +22,9 @@
 #include <inttypes.h>
 
 
+_Thread_local int mca_pml_ucx_in_post = 0;
+_Thread_local const void *mca_pml_ucx_skipped_complete = NULL;
+
 static int mca_pml_ucx_request_free(ompi_request_t **rptr)
 {
     ompi_request_t *req = *rptr;
@@ -95,7 +98,9 @@ mca_pml_ucx_recv_completion_internal(void *request, ucs_status_t status,
 
     mca_pml_ucx_set_recv_status(&req->req_status, status, info);
     PML_UCX_ASSERT( !(REQUEST_COMPLETE(req)));
-    if (OPAL_UNLIKELY(mca_pml_base_event_wanted(MCA_PML_BASE_EVENT_RECV_COMPLETE))) {
+    if (OPAL_UNLIKELY(mca_pml_ucx_in_post)) {
+        mca_pml_ucx_skipped_complete = req;           /* the poster raises the event after recv_start */
+    } else if (OPAL_UNLIKELY(mca_pml_base_event_wanted(MCA_PML_BASE_EVENT_RECV_COMPLETE))) {
         /* the request's communicator may not be set yet when UCX completes
            inside the receive call: find it from the context id in the tag */
         ompi_communicator_t *comm
