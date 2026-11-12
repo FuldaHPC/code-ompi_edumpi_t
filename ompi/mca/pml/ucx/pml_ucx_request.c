@@ -106,7 +106,7 @@ mca_pml_ucx_recv_completion_internal(void *request, ucs_status_t status,
     }
     if (OPAL_UNLIKELY(mca_pml_ucx_in_post)) {
         mca_pml_ucx_skipped_complete = req;           /* the poster raises the event after recv_start */
-    } else if (OPAL_UNLIKELY(mca_pml_base_event_wanted(MCA_PML_BASE_EVENT_RECV_COMPLETE))) {
+    } else if (OPAL_UNLIKELY(mca_pml_base_event_wanted_for(MCA_PML_BASE_EVENT_RECV_COMPLETE))) {
         /* the request's communicator may not be set yet when UCX completes
            inside the receive call: find it from the context id in the tag */
         ompi_communicator_t *comm

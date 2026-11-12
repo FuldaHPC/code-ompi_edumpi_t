@@ -966,8 +966,8 @@ int mca_pml_ucx_isend(const void *buf, size_t count, ompi_datatype_t *datatype,
 
     if (req == NULL) {
         PML_UCX_VERBOSE(8, "returning completed request");
-        if (OPAL_UNLIKELY(mca_pml_base_event_wanted(MCA_PML_BASE_EVENT_SEND_START)
-                          || mca_pml_base_event_wanted(MCA_PML_BASE_EVENT_SEND_COMPLETE))) {
+        if (OPAL_UNLIKELY(mca_pml_base_event_wanted_for(MCA_PML_BASE_EVENT_SEND_START)
+                          || mca_pml_base_event_wanted_for(MCA_PML_BASE_EVENT_SEND_COMPLETE))) {
             size_t size = 0;
             ompi_datatype_type_size(datatype, &size);
             mca_pml_base_event_raise_start(MCA_PML_BASE_EVENT_SEND_START, comm, NULL, dst, tag,
@@ -1107,15 +1107,15 @@ int mca_pml_ucx_send(const void *buf, size_t count, ompi_datatype_t *datatype, i
 {
     int rc;
 
-    if (OPAL_LIKELY(!mca_pml_base_event_wanted(MCA_PML_BASE_EVENT_SEND_START)
-                    && !mca_pml_base_event_wanted(MCA_PML_BASE_EVENT_SEND_COMPLETE))) {
+    if (OPAL_LIKELY(!mca_pml_base_event_wanted_for(MCA_PML_BASE_EVENT_SEND_START)
+                    && !mca_pml_base_event_wanted_for(MCA_PML_BASE_EVENT_SEND_COMPLETE))) {
         return mca_pml_ucx_send_impl(buf, count, datatype, dst, tag, mode, comm);
     }
 
     mca_pml_ucx_event_start(MCA_PML_BASE_EVENT_SEND_START, comm, NULL, dst, tag, count, datatype,
                             mca_pml_ucx_event_mode_flags(mode) | MCA_PML_BASE_EVENT_FLAG_BLOCKING);
     rc = mca_pml_ucx_send_impl(buf, count, datatype, dst, tag, mode, comm);
-    if (OPAL_LIKELY(OMPI_SUCCESS == rc) && mca_pml_base_event_wanted(MCA_PML_BASE_EVENT_SEND_COMPLETE)) {
+    if (OPAL_LIKELY(OMPI_SUCCESS == rc) && mca_pml_base_event_wanted_for(MCA_PML_BASE_EVENT_SEND_COMPLETE)) {
         size_t size = 0;
         ompi_datatype_type_size(datatype, &size);
         mca_pml_base_event_raise_complete(MCA_PML_BASE_EVENT_SEND_COMPLETE, comm, NULL, dst, tag,

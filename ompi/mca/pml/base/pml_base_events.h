@@ -114,6 +114,17 @@ static inline bool mca_pml_base_event_wanted(int which)
     return NULL != event && mca_base_event_active(event);
 }
 
+/* like _wanted(), but also true when only the generic request state event of the same step has listeners
+   (ompi.mpi.request_activated for a *_START, ompi.mpi.request_completed for a *_COMPLETE); for gates in front of
+   the raise helpers below, which raise both */
+static inline bool mca_pml_base_event_wanted_for(int which)
+{
+    const mca_base_event_t *g = (MCA_PML_BASE_EVENT_SEND_START == which || MCA_PML_BASE_EVENT_RECV_START == which)
+                                    ? ompi_event_request_activated : ompi_event_request_completed;
+
+    return mca_pml_base_event_wanted(which) || (NULL != g && mca_base_event_active(g));
+}
+
 /* rank in MPI_COMM_WORLD of a peer, -1 for MPI_ANY_SOURCE or on failure */
 static inline int32_t mca_pml_base_event_peer_world(ompi_communicator_t *comm, int peer)
 {

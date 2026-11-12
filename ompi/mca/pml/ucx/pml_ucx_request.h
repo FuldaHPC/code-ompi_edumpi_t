@@ -281,7 +281,7 @@ static inline void mca_pml_ucx_event_start(int which, ompi_communicator_t *comm,
 {
     size_t size = 0;
 
-    if (OPAL_LIKELY(!mca_pml_base_event_wanted(which))) {
+    if (OPAL_LIKELY(!mca_pml_base_event_wanted_for(which))) {
         return;
     }
     ompi_datatype_type_size(datatype, &size);
@@ -307,7 +307,7 @@ static inline void mca_pml_ucx_event_preq_complete(mca_pml_ucx_persistent_reques
     int flags = 0;
 
     if (preq->flags & MCA_PML_UCX_REQUEST_FLAG_SEND) {
-        if (OPAL_LIKELY(!mca_pml_base_event_wanted(MCA_PML_BASE_EVENT_SEND_COMPLETE))) {
+        if (OPAL_LIKELY(!mca_pml_base_event_wanted_for(MCA_PML_BASE_EVENT_SEND_COMPLETE))) {
             return;
         }
         ompi_datatype_type_size(preq->ompi_datatype, &size);
@@ -315,7 +315,7 @@ static inline void mca_pml_ucx_event_preq_complete(mca_pml_ucx_persistent_reques
                                           &preq->ompi, preq->ev_peer, preq->ev_tag, size * preq->count, 0);
         return;
     }
-    if (OPAL_LIKELY(!mca_pml_base_event_wanted(MCA_PML_BASE_EVENT_RECV_COMPLETE))) {
+    if (OPAL_LIKELY(!mca_pml_base_event_wanted_for(MCA_PML_BASE_EVENT_RECV_COMPLETE))) {
         return;
     }
     if (MPI_ERR_TRUNCATE == st->MPI_ERROR) {
@@ -334,7 +334,7 @@ static inline void mca_pml_ucx_event_recv_complete(ompi_communicator_t *comm, co
     int flags = 0, peer = -1, tag = -1;
     size_t length = 0;
 
-    if (OPAL_LIKELY(!mca_pml_base_event_wanted(MCA_PML_BASE_EVENT_RECV_COMPLETE))) {
+    if (OPAL_LIKELY(!mca_pml_base_event_wanted_for(MCA_PML_BASE_EVENT_RECV_COMPLETE))) {
         return;
     }
     if (UCS_OK == status || UCS_ERR_MESSAGE_TRUNCATED == status) {
