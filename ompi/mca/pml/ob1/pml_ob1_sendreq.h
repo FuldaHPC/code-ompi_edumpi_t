@@ -221,6 +221,7 @@ do {                                                                            
    mca_pml_ob1_event_raise_request( MCA_PML_OB1_EVENT_REQUEST_COMPLETE,               \
                                     (sendreq)->req_send.req_base.req_comm,            \
                                     &(sendreq)->req_send.req_base );                  \
+   mca_pml_ob1_event_raise_base_complete( &(sendreq)->req_send.req_base );           \
                                                                                      \
    ompi_request_complete( &((sendreq)->req_send.req_base.req_ompi), (with_signal) ); \
 } while(0)

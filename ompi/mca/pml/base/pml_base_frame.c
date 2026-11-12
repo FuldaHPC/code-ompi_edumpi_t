@@ -43,6 +43,7 @@
 #include "ompi/mca/pml/pml.h"
 #include "ompi/mca/pml/base/base.h"
 #include "ompi/mca/pml/base/pml_base_request.h"
+#include "ompi/mca/pml/base/pml_base_events.h"
 #if MPI_VERSION >= 4
 #include "ompi/mca/pml/base/pml_base_sendreq.h"
 #endif
@@ -126,6 +127,8 @@ static int mca_pml_base_register(mca_base_register_flag_t flags)
     mca_base_var_enum_t *ompi_pml_base_warn_dep_cancel_send_enum = NULL;
     int rc;
 #endif
+
+    mca_pml_base_events_register();
 
     ompi_pml_base_bsend_allocator_name = "basic";
     (void) mca_base_var_register("ompi", "pml", "base", "bsend_allocator", NULL,

@@ -106,6 +106,7 @@ int mca_pml_ob1_start(size_t count, ompi_request_t** requests)
                 mca_pml_ob1_event_raise_request (MCA_PML_OB1_EVENT_REQUEST_ACTIVATE,
                                                  sendreq->req_send.req_base.req_comm,
                                                  &sendreq->req_send.req_base);
+                mca_pml_ob1_event_raise_base_start(&sendreq->req_send.req_base, MCA_PML_BASE_EVENT_FLAG_PERSISTENT);
 
                 MCA_PML_OB1_SEND_REQUEST_START(sendreq, rc);
                 if(rc != OMPI_SUCCESS)
@@ -120,6 +121,7 @@ int mca_pml_ob1_start(size_t count, ompi_request_t** requests)
                 mca_pml_ob1_event_raise_request (MCA_PML_OB1_EVENT_REQUEST_ACTIVATE,
                                                  recvreq->req_recv.req_base.req_comm,
                                                  &recvreq->req_recv.req_base);
+                mca_pml_ob1_event_raise_base_start(&recvreq->req_recv.req_base, MCA_PML_BASE_EVENT_FLAG_PERSISTENT);
                 MCA_PML_OB1_RECV_REQUEST_START(recvreq);
                 break;
             }

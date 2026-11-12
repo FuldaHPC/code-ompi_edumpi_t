@@ -161,6 +161,8 @@ static inline int mca_pml_ob1_send_inline (const void *buf, size_t count,
        tracing hangs off a request, which is why short non-synchronous sends
        have been invisible to it. */
     mca_pml_ob1_event_raise_immediate_send (comm, dst, tag, size);
+    mca_pml_base_event_raise_start(MCA_PML_BASE_EVENT_SEND_START, comm, NULL, dst, tag, size, 0);
+    mca_pml_base_event_raise_complete(MCA_PML_BASE_EVENT_SEND_COMPLETE, comm, NULL, dst, tag, size, 0);
 
     return (int) size;
 }
@@ -207,6 +209,7 @@ int mca_pml_ob1_isend(const void *buf,
         mca_pml_ob1_event_raise_request (MCA_PML_OB1_EVENT_REQUEST_ACTIVATE,
                                          sendreq->req_send.req_base.req_comm,
                                          &sendreq->req_send.req_base);
+        mca_pml_ob1_event_raise_base_start(&sendreq->req_send.req_base, 0);
         rc = mca_pml_ob1_stage_or_start(sendreq, seqn);
         *request = (ompi_request_t *) sendreq;
         return rc;
@@ -247,6 +250,7 @@ int mca_pml_ob1_isend(const void *buf,
     mca_pml_ob1_event_raise_request (MCA_PML_OB1_EVENT_REQUEST_ACTIVATE,
                                      sendreq->req_send.req_base.req_comm,
                                      &sendreq->req_send.req_base);
+    mca_pml_ob1_event_raise_base_start(&sendreq->req_send.req_base, 0);
 
     MCA_PML_OB1_SEND_REQUEST_START_W_SEQ(sendreq, endpoint, seqn, rc);
     *request = (ompi_request_t *) sendreq;
@@ -271,6 +275,7 @@ alloc_ft_req:
     mca_pml_ob1_event_raise_request (MCA_PML_OB1_EVENT_REQUEST_ACTIVATE,
                                      sendreq->req_send.req_base.req_comm,
                                      &sendreq->req_send.req_base);
+    mca_pml_ob1_event_raise_base_start(&sendreq->req_send.req_base, 0);
 
     /* No point in starting the request, it won't go through, mark completed
      * in error for collection in future wait */
@@ -376,6 +381,7 @@ int mca_pml_ob1_send(const void *buf,
     mca_pml_ob1_event_raise_request (MCA_PML_OB1_EVENT_REQUEST_ACTIVATE,
                                      sendreq->req_send.req_base.req_comm,
                                      &sendreq->req_send.req_base);
+    mca_pml_ob1_event_raise_base_start(&sendreq->req_send.req_base, MCA_PML_BASE_EVENT_FLAG_BLOCKING);
 
     MCA_PML_OB1_SEND_REQUEST_START_W_SEQ(sendreq, endpoint, seqn, rc);
     if (OPAL_LIKELY(rc == OMPI_SUCCESS)) {

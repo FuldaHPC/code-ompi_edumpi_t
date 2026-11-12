@@ -134,6 +134,7 @@ do {                                                                \
         mca_pml_ob1_event_raise_request( MCA_PML_OB1_EVENT_REQUEST_COMPLETE,           \
                                          recvreq->req_recv.req_base.req_comm,          \
                                          &recvreq->req_recv.req_base );               \
+        mca_pml_ob1_event_raise_base_complete( &recvreq->req_recv.req_base );         \
         ompi_request_complete( &(recvreq->req_recv.req_base.req_ompi), true );        \
     } while (0)
 

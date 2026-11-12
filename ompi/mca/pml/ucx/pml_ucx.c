@@ -666,6 +666,8 @@ int mca_pml_ucx_irecv(void *buf, size_t count, ompi_datatype_t *datatype,
     }
 
     PML_UCX_VERBOSE(8, "got request %p", (void*)req);
+    /* an immediate match may already have raised recv_complete for this token */
+    mca_pml_ucx_event_start(MCA_PML_BASE_EVENT_RECV_START, comm, req, src, tag, count, datatype, 0);
     req->req_mpi_object.comm = comm;
     *request                 = req;
     return OMPI_SUCCESS;
@@ -694,6 +696,8 @@ int mca_pml_ucx_recv(void *buf, size_t count, ompi_datatype_t *datatype, int src
 
     PML_UCX_TRACE_RECV("%s", buf, count, datatype, src, tag, comm, "recv");
 
+    mca_pml_ucx_event_start(MCA_PML_BASE_EVENT_RECV_START, comm, req, src, tag, count, datatype,
+                            MCA_PML_BASE_EVENT_FLAG_BLOCKING);
     PML_UCX_MAKE_RECV_TAG(ucp_tag, ucp_tag_mask, tag, src, comm);
 #if HAVE_DECL_UCP_TAG_RECV_NBX
     ucp_tag_recv_nbx(ompi_pml_ucx.ucp_worker, buf,
@@ -708,6 +712,7 @@ int mca_pml_ucx_recv(void *buf, size_t count, ompi_datatype_t *datatype, int src
         status = ucp_request_test(req, &info);
         if (status != UCS_INPROGRESS) {
             result = mca_pml_ucx_set_recv_status_public(mpi_status, status, &info);
+            mca_pml_ucx_event_recv_complete(comm, req, status, &info);
 
 #if SPC_ENABLE == 1
             size_t dt_size;
@@ -940,10 +945,23 @@ int mca_pml_ucx_isend(const void *buf, size_t count, ompi_datatype_t *datatype,
 
     if (req == NULL) {
         PML_UCX_VERBOSE(8, "returning completed request");
+        if (OPAL_UNLIKELY(mca_pml_base_event_wanted(MCA_PML_BASE_EVENT_SEND_START)
+                          || mca_pml_base_event_wanted(MCA_PML_BASE_EVENT_SEND_COMPLETE))) {
+            size_t size = 0;
+            ompi_datatype_type_size(datatype, &size);
+            mca_pml_base_event_raise_start(MCA_PML_BASE_EVENT_SEND_START, comm, NULL, dst, tag,
+                                           size * count, mca_pml_ucx_event_mode_flags(mode));
+            mca_pml_base_event_raise_complete(MCA_PML_BASE_EVENT_SEND_COMPLETE, comm, NULL, dst,
+                                              tag, size * count, 0);
+        }
         *request = &ompi_pml_ucx.completed_send_req;
         return OMPI_SUCCESS;
     } else if (!UCS_PTR_IS_ERR(req)) {
         PML_UCX_VERBOSE(8, "got request %p", (void*)req);
+        /* No send_complete for a send that completes later: the UCX completion
+           callback knows neither the communicator nor the peer. */
+        mca_pml_ucx_event_start(MCA_PML_BASE_EVENT_SEND_START, comm, req, dst, tag, count,
+                                datatype, mca_pml_ucx_event_mode_flags(mode));
         req->req_mpi_object.comm = comm;
 #if MPI_VERSION >= 4
         if (OPAL_LIKELY(mca_pml_ucx_request_cancel == req->req_cancel)) {
@@ -1020,9 +1038,9 @@ mca_pml_ucx_send_nbr(ucp_ep_h ep, const void *buf, size_t count,
 }
 #endif
 
-int mca_pml_ucx_send(const void *buf, size_t count, ompi_datatype_t *datatype, int dst,
-                     int tag, mca_pml_base_send_mode_t mode,
-                     struct ompi_communicator_t* comm)
+static int mca_pml_ucx_send_impl(const void *buf, size_t count, ompi_datatype_t *datatype,
+                                 int dst, int tag, mca_pml_base_send_mode_t mode,
+                                 struct ompi_communicator_t* comm)
 {
     int rc;
     ucp_ep_h ep;
@@ -1059,6 +1077,29 @@ int mca_pml_ucx_send(const void *buf, size_t count, ompi_datatype_t *datatype, i
     return mca_pml_ucx_send_nb(ep, buf, count, datatype,
                                mca_pml_ucx_get_datatype(datatype),
                                PML_UCX_MAKE_SEND_TAG(tag, comm, cid), mode, comm);
+}
+
+int mca_pml_ucx_send(const void *buf, size_t count, ompi_datatype_t *datatype, int dst,
+                     int tag, mca_pml_base_send_mode_t mode,
+                     struct ompi_communicator_t* comm)
+{
+    int rc;
+
+    if (OPAL_LIKELY(!mca_pml_base_event_wanted(MCA_PML_BASE_EVENT_SEND_START)
+                    && !mca_pml_base_event_wanted(MCA_PML_BASE_EVENT_SEND_COMPLETE))) {
+        return mca_pml_ucx_send_impl(buf, count, datatype, dst, tag, mode, comm);
+    }
+
+    mca_pml_ucx_event_start(MCA_PML_BASE_EVENT_SEND_START, comm, NULL, dst, tag, count, datatype,
+                            mca_pml_ucx_event_mode_flags(mode) | MCA_PML_BASE_EVENT_FLAG_BLOCKING);
+    rc = mca_pml_ucx_send_impl(buf, count, datatype, dst, tag, mode, comm);
+    if (OPAL_LIKELY(OMPI_SUCCESS == rc) && mca_pml_base_event_wanted(MCA_PML_BASE_EVENT_SEND_COMPLETE)) {
+        size_t size = 0;
+        ompi_datatype_type_size(datatype, &size);
+        mca_pml_base_event_raise_complete(MCA_PML_BASE_EVENT_SEND_COMPLETE, comm, NULL, dst, tag,
+                                          size * count, 0);
+    }
+    return rc;
 }
 
 int mca_pml_ucx_iprobe(int src, int tag, struct ompi_communicator_t* comm,
@@ -1176,6 +1217,9 @@ int mca_pml_ucx_imrecv(void *buf, size_t count, ompi_datatype_t *datatype,
     }
 
     PML_UCX_VERBOSE(8, "got request %p", (void*)req);
+    /* the tag of a matched message is not kept: report MPI_ANY_TAG */
+    mca_pml_ucx_event_start(MCA_PML_BASE_EVENT_RECV_START, (*message)->comm, req,
+                            (*message)->peer, MPI_ANY_TAG, count, datatype, 0);
     req->req_mpi_object.comm = (*message)->comm;
     PML_UCX_MESSAGE_RELEASE(message);
     *request = req;
@@ -1199,6 +1243,9 @@ int mca_pml_ucx_mrecv(void *buf, size_t count, ompi_datatype_t *datatype,
         return OMPI_ERROR;
     }
 
+    mca_pml_ucx_event_start(MCA_PML_BASE_EVENT_RECV_START, (*message)->comm, req,
+                            (*message)->peer, MPI_ANY_TAG, count, datatype,
+                            MCA_PML_BASE_EVENT_FLAG_BLOCKING);
     req->req_mpi_object.comm = (*message)->comm;
     PML_UCX_MESSAGE_RELEASE(message);
 

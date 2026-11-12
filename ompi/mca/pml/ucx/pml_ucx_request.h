@@ -19,6 +19,7 @@
 #include "pml_ucx_datatype.h"
 #if MPI_VERSION >= 4
 #include "ompi/mca/pml/base/pml_base_sendreq.h"
+#include "ompi/mca/pml/base/pml_base_events.h"
 #endif
 
 
@@ -252,6 +253,63 @@ static inline int mca_pml_ucx_set_recv_status_public(ompi_status_public_t* mpi_s
     }
 
     return MPI_ERR_INTERN;
+}
+
+
+/* PML independent MPI_T events (pml_base_events.h) */
+static inline int mca_pml_ucx_event_mode_flags(mca_pml_base_send_mode_t mode)
+{
+    switch (mode) {
+    case MCA_PML_BASE_SEND_SYNCHRONOUS:
+        return MCA_PML_BASE_EVENT_FLAG_SYNC;
+    case MCA_PML_BASE_SEND_READY:
+        return MCA_PML_BASE_EVENT_FLAG_READY;
+    case MCA_PML_BASE_SEND_BUFFERED:
+        return MCA_PML_BASE_EVENT_FLAG_BUFFERED;
+    default:
+        return 0;
+    }
+}
+
+/* which: MCA_PML_BASE_EVENT_SEND_START or _RECV_START; req: the request token or NULL */
+static inline void mca_pml_ucx_event_start(int which, ompi_communicator_t *comm, const void *req,
+                                           int peer, int tag, size_t count,
+                                           ompi_datatype_t *datatype, int flags)
+{
+    size_t size = 0;
+
+    if (OPAL_LIKELY(!mca_pml_base_event_wanted(which))) {
+        return;
+    }
+    ompi_datatype_type_size(datatype, &size);
+    mca_pml_base_event_raise_start(which, comm, req, peer, tag, size * count, flags);
+}
+
+static inline void mca_pml_ucx_event_recv_complete(ompi_communicator_t *comm, const void *req,
+                                                   ucs_status_t status,
+                                                   const ucp_tag_recv_info_t *info)
+{
+    int flags = 0, peer = -1, tag = -1;
+    size_t length = 0;
+
+    if (OPAL_LIKELY(!mca_pml_base_event_wanted(MCA_PML_BASE_EVENT_RECV_COMPLETE))) {
+        return;
+    }
+    if (UCS_OK == status || UCS_ERR_MESSAGE_TRUNCATED == status) {
+        int64_t sender_tag = info->sender_tag; /* signed: keeps negative internal tags */
+        peer   = (int) PML_UCX_TAG_GET_SOURCE(sender_tag);
+        tag    = (int) PML_UCX_TAG_GET_MPI_TAG(sender_tag);
+        length = info->length;
+    }
+    if (UCS_ERR_MESSAGE_TRUNCATED == status) {
+        flags |= MCA_PML_BASE_EVENT_COMPLETE_TRUNCATED | MCA_PML_BASE_EVENT_COMPLETE_ERROR;
+    } else if (UCS_ERR_CANCELED == status) {
+        flags |= MCA_PML_BASE_EVENT_COMPLETE_CANCELLED;
+    } else if (UCS_OK != status) {
+        flags |= MCA_PML_BASE_EVENT_COMPLETE_ERROR;
+    }
+    mca_pml_base_event_raise_complete(MCA_PML_BASE_EVENT_RECV_COMPLETE, comm, req, peer, tag,
+                                      length, flags);
 }
 
 OBJ_CLASS_DECLARATION(mca_pml_ucx_persistent_request_t);

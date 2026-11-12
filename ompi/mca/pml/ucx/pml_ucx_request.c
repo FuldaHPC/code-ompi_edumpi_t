@@ -92,6 +92,15 @@ mca_pml_ucx_recv_completion_internal(void *request, ucs_status_t status,
 
     mca_pml_ucx_set_recv_status(&req->req_status, status, info);
     PML_UCX_ASSERT( !(REQUEST_COMPLETE(req)));
+    if (OPAL_UNLIKELY(mca_pml_base_event_wanted(MCA_PML_BASE_EVENT_RECV_COMPLETE))) {
+        /* the request's communicator may not be set yet when UCX completes
+           inside the receive call: find it from the context id in the tag */
+        ompi_communicator_t *comm
+            = ompi_comm_lookup((uint32_t) (info->sender_tag & UCS_MASK(PML_UCX_CONTEXT_BITS)));
+        if (NULL != comm) {
+            mca_pml_ucx_event_recv_complete(comm, req, status, info);
+        }
+    }
     ompi_request_complete(req, true);
 }
 

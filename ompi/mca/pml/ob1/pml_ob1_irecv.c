@@ -103,6 +103,7 @@ int mca_pml_ob1_irecv(void *addr,
     mca_pml_ob1_event_raise_request (MCA_PML_OB1_EVENT_REQUEST_ACTIVATE,
                                      recvreq->req_recv.req_base.req_comm,
                                      &recvreq->req_recv.req_base);
+    mca_pml_ob1_event_raise_base_start(&recvreq->req_recv.req_base, 0);
 
     MCA_PML_OB1_RECV_REQUEST_START(recvreq);
     *request = (ompi_request_t *) recvreq;
@@ -142,6 +143,7 @@ int mca_pml_ob1_recv(void *addr,
     mca_pml_ob1_event_raise_request (MCA_PML_OB1_EVENT_REQUEST_ACTIVATE,
                                      recvreq->req_recv.req_base.req_comm,
                                      &recvreq->req_recv.req_base);
+    mca_pml_ob1_event_raise_base_start(&recvreq->req_recv.req_base, MCA_PML_BASE_EVENT_FLAG_BLOCKING);
 
     MCA_PML_OB1_RECV_REQUEST_START(recvreq);
     ompi_request_wait_completion(&recvreq->req_recv.req_base.req_ompi);
@@ -238,6 +240,7 @@ mca_pml_ob1_imrecv( void *buf,
     mca_pml_ob1_event_raise_request (MCA_PML_OB1_EVENT_REQUEST_ACTIVATE,
                                      recvreq->req_recv.req_base.req_comm,
                                      &recvreq->req_recv.req_base);
+    mca_pml_ob1_event_raise_base_start(&recvreq->req_recv.req_base, 0);
 
     /* init/re-init the request */
     recvreq->req_lock = 0;
@@ -337,6 +340,7 @@ mca_pml_ob1_mrecv( void *buf,
     mca_pml_ob1_event_raise_request (MCA_PML_OB1_EVENT_REQUEST_ACTIVATE,
                                      recvreq->req_recv.req_base.req_comm,
                                      &recvreq->req_recv.req_base);
+    mca_pml_ob1_event_raise_base_start(&recvreq->req_recv.req_base, MCA_PML_BASE_EVENT_FLAG_BLOCKING);
 
     /* init/re-init the request */
     recvreq->req_lock = 0;

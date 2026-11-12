@@ -43,6 +43,10 @@
 #include <assert.h>
 
 #include "opal/mca/base/mca_base_event.h"
+#include "ompi/datatype/ompi_datatype.h"
+#include "ompi/mca/pml/base/pml_base_events.h"
+#include "ompi/mca/pml/base/pml_base_sendreq.h"
+#include "ompi/mca/pml/base/pml_base_recvreq.h"
 
 BEGIN_C_DECLS
 
@@ -255,6 +259,64 @@ static inline void mca_pml_ob1_event_raise_immediate_send(struct ompi_communicat
     mca_base_event_raise_bound(mca_pml_ob1_event[MCA_PML_OB1_EVENT_IMMEDIATE_SEND], NULL, comm,
                                &payload);
 }
+
+/* The PML independent envelope events (pml_base_events.h) for an ob1 request.
+   Called next to the ob1 specific request_activate / request_complete raise
+   sites; the request type decides between the send and the receive event. */
+static inline void mca_pml_ob1_event_raise_base_start(const mca_pml_base_request_t *req,
+                                                      int flags)
+{
+    if (MCA_PML_REQUEST_SEND == req->req_type) {
+        const mca_pml_base_send_request_t *sreq = (const mca_pml_base_send_request_t *) req;
+        switch (sreq->req_send_mode) {
+        case MCA_PML_BASE_SEND_SYNCHRONOUS:
+            flags |= MCA_PML_BASE_EVENT_FLAG_SYNC;
+            break;
+        case MCA_PML_BASE_SEND_READY:
+            flags |= MCA_PML_BASE_EVENT_FLAG_READY;
+            break;
+        case MCA_PML_BASE_SEND_BUFFERED:
+            flags |= MCA_PML_BASE_EVENT_FLAG_BUFFERED;
+            break;
+        default:
+            break;
+        }
+        mca_pml_base_event_raise_start(MCA_PML_BASE_EVENT_SEND_START, req->req_comm, req,
+                                       req->req_peer, req->req_tag, sreq->req_bytes_packed, flags);
+    } else if (MCA_PML_REQUEST_RECV == req->req_type) {
+        mca_pml_base_event_raise_start(MCA_PML_BASE_EVENT_RECV_START, req->req_comm, req,
+                                       req->req_peer, req->req_tag,
+                                       NULL == req->req_datatype
+                                           ? 0
+                                           : req->req_count * req->req_datatype->super.size,
+                                       flags);
+    }
+}
+
+static inline void mca_pml_ob1_event_raise_base_complete(const mca_pml_base_request_t *req)
+{
+    const ompi_status_public_t *st = &req->req_ompi.req_status;
+    int flags = 0;
+
+    if (st->_cancelled) {
+        flags |= MCA_PML_BASE_EVENT_COMPLETE_CANCELLED;
+    }
+    if (MPI_ERR_TRUNCATE == st->MPI_ERROR) {
+        flags |= MCA_PML_BASE_EVENT_COMPLETE_TRUNCATED | MCA_PML_BASE_EVENT_COMPLETE_ERROR;
+    } else if (MPI_SUCCESS != st->MPI_ERROR) {
+        flags |= MCA_PML_BASE_EVENT_COMPLETE_ERROR;
+    }
+    if (MCA_PML_REQUEST_SEND == req->req_type) {
+        const mca_pml_base_send_request_t *sreq = (const mca_pml_base_send_request_t *) req;
+        mca_pml_base_event_raise_complete(MCA_PML_BASE_EVENT_SEND_COMPLETE, req->req_comm, req,
+                                          req->req_peer, req->req_tag, sreq->req_bytes_packed,
+                                          flags);
+    } else if (MCA_PML_REQUEST_RECV == req->req_type) {
+        mca_pml_base_event_raise_complete(MCA_PML_BASE_EVENT_RECV_COMPLETE, req->req_comm, req,
+                                          st->MPI_SOURCE, st->MPI_TAG, st->_ucount, flags);
+    }
+}
+
 END_C_DECLS
 
 #endif /* MCA_PML_OB1_EVENTS_H */
