@@ -506,6 +506,11 @@ static inline int NBC_Start_round_impl(NBC_Handle *handle) {
 #ifdef NBC_TIMING
         Isend_time += ompi_wtime();
 #endif
+        if (OPAL_UNLIKELY(ompi_coll_libnbc_request_pvars_bound)) {
+          size_t one = 0;
+          ompi_datatype_type_size(sendargs.datatype, &one);
+          ompi_coll_libnbc_request_account_send(handle, sendargs.dest, one * sendargs.count);
+        }
         break;
       case RECV:
         NBC_DEBUG(5, "  RECV (offset %li) ", offset);

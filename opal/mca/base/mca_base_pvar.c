@@ -544,6 +544,7 @@ int mca_base_pvar_handle_alloc(mca_base_pvar_session_t *session, int index, void
 
     if (OPAL_SUCCESS != ret && pvar_handle) {
         OBJ_RELEASE(pvar_handle);
+        *handle = NULL;
     }
 
     return ret;
@@ -982,7 +983,12 @@ static void mca_base_pvar_handle_constructor(mca_base_pvar_handle_t *handle)
 
 static void mca_base_pvar_handle_destructor(mca_base_pvar_handle_t *handle)
 {
-    if (handle->pvar) {
+    /* handle->session is set only once the handle was bound successfully and is about to be linked into the lists:
+       a handle that failed in mca_base_pvar_handle_alloc() (for example because the variable refused the bound
+       object) was never bound and is not in any list. */
+    bool bound = (NULL != handle->session);
+
+    if (handle->pvar && bound) {
         (void) mca_base_pvar_notify(handle, MCA_BASE_PVAR_HANDLE_UNBIND, NULL);
     }
 
@@ -999,7 +1005,7 @@ static void mca_base_pvar_handle_destructor(mca_base_pvar_handle_t *handle)
     }
 
     /* remove this handle from the pvar list */
-    if (handle->pvar) {
+    if (handle->pvar && bound) {
         opal_list_remove_item(&handle->pvar->bound_handles, &handle->list2);
     }
 

@@ -488,9 +488,12 @@ performance variable handle bound to it (``MPI_T_pvar_handle_alloc`` with an ``M
 the handler of ``ompi.mpi.request_freeing`` it reads the handle and frees it. The ``ob1`` PML provides
 ``pml_ob1_request_bytes`` (class size, ``unsigned long long``): the bytes the request has moved; for a completed send
 the size of the message. It is a size and not a counter because request objects are recycled, so the value at bind
-time can be the one of the previous use. The value is only meaningful until the freeing handler returns. Other PMLs
-and the collective components do not provide such a variable yet; binding the variable to a request that is not an
-``ob1`` request fails.
+time can be the one of the previous use. The value is only meaningful until the freeing handler returns. For non-blocking collectives of the ``libnbc`` component the variables ``coll_libnbc_request_messages`` and
+``coll_libnbc_request_bytes`` (class counter, ``unsigned long long``, one element per peer of the communicator) count
+the messages the request's schedule sent and their bytes. A handle bound in the created handler and read in the freeing
+handler gives the internal traffic of that one request although other operations use the communicator meanwhile.
+Binding a variable to a request of another kind fails. Other PMLs and collective components do not provide such
+variables yet.
 
 Request state events
 ^^^^^^^^^^^^^^^^^^^^

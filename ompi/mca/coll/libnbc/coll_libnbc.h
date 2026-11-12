@@ -158,6 +158,12 @@ typedef ompi_coll_libnbc_request_t NBC_Handle;
 
 int ompi_coll_libnbc_progress(void);
 
+/* request-bound MPI_T variables (coll_libnbc_request_pvars.c) */
+extern volatile int ompi_coll_libnbc_request_pvars_bound;
+void ompi_coll_libnbc_request_pvars_register(void);
+void ompi_coll_libnbc_request_account_send(NBC_Handle *handle, int dest, size_t bytes);
+bool ompi_coll_libnbc_is_request(ompi_request_t *req);
+
 int NBC_Init_comm(MPI_Comm comm, ompi_coll_libnbc_module_t *module);
 int NBC_Progress(NBC_Handle *handle);
 

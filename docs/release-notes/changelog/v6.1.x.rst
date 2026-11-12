@@ -362,3 +362,7 @@ Open MPI version v6.1.0
 - MPI_T performance variables can now be bound to requests of the ``ob1`` PML and of the collective components (the
   object validity check accepts the request classes the components derive from ``ompi_request_t``), and ``ob1``
   provides the request-bound variable ``pml_ob1_request_bytes``.
+
+- Added the request-bound MPI_T variables ``coll_libnbc_request_messages`` and ``coll_libnbc_request_bytes``: the messages
+  and bytes a non-blocking collective request sent, per peer.  Fixed a crash in ``mca_base_pvar_handle_alloc()`` when a
+  variable refuses the object a handle is bound to.

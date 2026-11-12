@@ -27,6 +27,7 @@ sources = \
         coll_libnbc.h \
 	coll_libnbc_component.c \
 	nbc.c \
+	coll_libnbc_request_pvars.c \
 	nbc_internal.h \
 	libdict/dict.h \
 	libdict/dict_private.h \

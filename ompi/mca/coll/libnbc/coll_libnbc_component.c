@@ -186,6 +186,8 @@ libnbc_close(void)
 static int
 libnbc_register(void)
 {
+    ompi_coll_libnbc_request_pvars_register();
+
     mca_base_var_enum_t *new_enum = NULL;
 
     /* Use a low priority, but allow other components to be lower */
@@ -685,6 +687,13 @@ request_cancel(struct ompi_request_t *request, int complete)
     return MPI_ERR_REQUEST;
 }
 
+
+static int request_free(struct ompi_request_t **ompi_req);
+
+bool ompi_coll_libnbc_is_request(ompi_request_t *req)
+{
+    return NULL != req && OMPI_REQUEST_COLL == req->req_type && request_free == req->req_free;
+}
 
 static int
 request_free(struct ompi_request_t **ompi_req)
