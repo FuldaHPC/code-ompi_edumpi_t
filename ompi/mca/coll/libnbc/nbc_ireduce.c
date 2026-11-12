@@ -26,6 +26,7 @@
 #include "ompi/op/op.h"
 
 #include "nbc_internal.h"
+#include "ompi/mca/coll/base/coll_base_events.h"
 
 static inline int red_sched_binomial (int rank, int p, int root, const void *sendbuf, void *redbuf, char tmpredbuf, size_t count, MPI_Datatype datatype,
                                       MPI_Op op, char inplace, NBC_Schedule *schedule, void *tmpbuf);
@@ -229,6 +230,12 @@ static int nbc_reduce_init(const void* sendbuf, void* recvbuf, size_t count, MPI
 #endif
 
   res = NBC_Schedule_request(schedule, comm, libnbc_module, persistent, request, tmpbuf);
+  if (OPAL_UNLIKELY(OMPI_SUCCESS == res && mca_coll_base_event_algorithm_wanted())) {
+    /* algorithm number as in the libnbc control variable of this operation */
+    static const int alg_id[] = {[NBC_RED_CHAIN]=1,[NBC_RED_BINOMIAL]=2,[NBC_RED_REDSCAT_GATHER]=3};
+    mca_coll_base_event_raise_algorithm(comm, MCA_COLL_BASE_EVENT_COMPONENT_LIBNBC, REDUCE, alg_id[alg],
+                                        count, datatype, root, *request);
+  }
   if (OPAL_UNLIKELY(OMPI_SUCCESS != res)) {
     OBJ_RELEASE(schedule);
     free(tmpbuf);

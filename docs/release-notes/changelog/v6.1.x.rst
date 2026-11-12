@@ -344,3 +344,8 @@ Open MPI version v6.1.0
   ``ompi.pml_send_complete`` and ``ompi.pml_recv_complete``.  They report
   peer, tag, size and mode of every point-to-point message independent of
   the PML in use and are raised by the ``ob1`` and ``ucx`` PMLs.
+
+- Added the MPI_T event ``ompi.coll_algorithm_selected``.  It reports
+  which algorithm the ``tuned``, ``libnbc`` and ``han`` collective
+  components chose for an operation, including the algorithms ``han``
+  runs on its inter-node and intra-node helper communicators.

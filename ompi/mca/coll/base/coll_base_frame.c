@@ -35,6 +35,7 @@
 #include "opal/mca/base/mca_base_alias.h"
 #include "ompi/mca/coll/coll.h"
 #include "ompi/mca/coll/base/base.h"
+#include "ompi/mca/coll/base/coll_base_events.h"
 #include "ompi/mca/coll/base/coll_base_functions.h"
 
 /*
@@ -134,6 +135,7 @@ ompi_request_t** ompi_coll_base_comm_get_reqs(mca_coll_base_comm_t* data, int nr
 static int mca_coll_base_register(mca_base_register_flag_t flags)
 {
     (void) mca_base_alias_register("ompi", "coll", "accelerator", "cuda", MCA_BASE_ALIAS_FLAG_DEPRECATED);
+    mca_coll_base_events_register();
     return OMPI_SUCCESS;
 }
 

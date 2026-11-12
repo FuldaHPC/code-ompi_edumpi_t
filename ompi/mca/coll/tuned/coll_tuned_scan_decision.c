@@ -27,6 +27,7 @@
 #include "ompi/mca/pml/pml.h"
 #include "ompi/op/op.h"
 #include "coll_tuned.h"
+#include "ompi/mca/coll/base/coll_base_events.h"
 
 /* scan algorithm variables */
 static int coll_tuned_scan_forced_algorithm = 0;
@@ -99,6 +100,12 @@ int ompi_coll_tuned_scan_intra_do_this(const void *sbuf, void* rbuf, size_t coun
     OPAL_OUTPUT_VERBOSE((COLL_TUNED_TRACING_VERBOSE, ompi_coll_tuned_stream,
         "coll:tuned:scan_intra_do_this selected algorithm %d",
         algorithm));
+
+    /* algorithm 0 asks for the fixed decision, which reports the final choice itself */
+    if (algorithm > 0) {
+        mca_coll_base_event_raise_algorithm(comm, MCA_COLL_BASE_EVENT_COMPONENT_TUNED, SCAN, algorithm,
+                                            count, dtype, -1, NULL);
+    }
 
     switch (algorithm) {
     case (0):

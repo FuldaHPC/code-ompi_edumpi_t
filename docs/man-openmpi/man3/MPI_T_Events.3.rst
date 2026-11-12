@@ -417,6 +417,39 @@ Three correlators recur across their payloads:
    correlator precisely because there is no request to correlate with, and it
    is the only event such a send produces.
 
+Collective algorithm event
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+``ompi.coll_algorithm_selected``
+   Level 4, bound to a communicator. A collective component chose an algorithm
+   for one operation on the communicator; raised after the decision, before the
+   algorithm runs. Payload (9 elements): ``request`` (``uint64``, the request of
+   a nonblocking collective, 0 for a blocking one), ``msg_size`` (``int64``,
+   bytes per process as the decision saw them, 0 if not applicable),
+   ``parent_comm`` (``uint64``, see below), ``operation`` (``int32``, order of
+   the ``COLLTYPE`` enumeration in ``coll_base_functions.h``: 0 allgather,
+   2 allreduce, 3 alltoall, 6 barrier, 7 bcast, 9 gather, 11 reduce,
+   15 scatter, ...), ``algorithm`` (``int32``), ``component`` (``int32``: 1 basic,
+   2 tuned, 3 han, 4 libnbc, 5 adapt, 6 xhc, 7 acoll, 8 ucc, 9 sm, 10 self,
+   11 inter, 0 other), ``comm_size`` (``int32``), ``root`` (``int32``, -1 if
+   the operation has none), ``level`` (``int32``).
+
+   ``algorithm`` is the component's own number. For ``tuned`` and ``libnbc`` it
+   is the value of the control variable ``coll_<component>_<operation>_algorithm``
+   that selects this algorithm, and the enumeration of that control variable
+   gives the name. For ``han`` it is the id of the HAN algorithm tables, 0 for
+   the default task based algorithm and 255 for the default simple algorithm.
+   ``tuned`` does not report algorithm 0 (that value asks for the built-in
+   decision, which then reports the final choice). ``libnbc`` reports ``ibcast``,
+   ``iallreduce``, ``ireduce`` and ``iallgather``; other operations are not
+   reported yet.
+
+   The ``han`` component runs further collectives on helper communicators. Their
+   events are delivered to registrations on the user's communicator, with
+   ``level`` 1 (inter-node) or 2 (intra-node), ``parent_comm`` set to the user's
+   communicator and ``comm_size`` the size of the helper communicator. The ``han``
+   decision itself has ``level`` 0.
+
 Point-to-point events common to all PMLs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

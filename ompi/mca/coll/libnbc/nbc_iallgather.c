@@ -20,6 +20,7 @@
  *
  */
 #include "nbc_internal.h"
+#include "ompi/mca/coll/base/coll_base_events.h"
 
 static inline int allgather_sched_linear(
     int rank, int comm_size, NBC_Schedule *schedule, const void *sendbuf,
@@ -183,6 +184,12 @@ static int nbc_allgather_init(const void* sendbuf, size_t sendcount, MPI_Datatyp
 #endif
 
   res = NBC_Schedule_request(schedule, comm, libnbc_module, persistent, request, NULL);
+  if (OPAL_UNLIKELY(OMPI_SUCCESS == res && mca_coll_base_event_algorithm_wanted())) {
+    /* algorithm number as in the libnbc control variable of this operation */
+    static const int alg_id[] = {[NBC_ALLGATHER_LINEAR]=1,[NBC_ALLGATHER_RDBL]=2};
+    mca_coll_base_event_raise_algorithm(comm, MCA_COLL_BASE_EVENT_COMPONENT_LIBNBC, ALLGATHER, alg_id[alg],
+                                        sendcount, sendtype, -1, *request);
+  }
   if (OPAL_UNLIKELY(OMPI_SUCCESS != res)) {
     OBJ_RELEASE(schedule);
     return res;

@@ -30,6 +30,7 @@
 #include "ompi/mca/pml/pml.h"
 #include "ompi/op/op.h"
 #include "coll_tuned.h"
+#include "ompi/mca/coll/base/coll_base_events.h"
 
 /* reduce_scatter_block algorithm variables */
 static int coll_tuned_reduce_scatter_block_forced_algorithm = 0;
@@ -129,6 +130,12 @@ int ompi_coll_tuned_reduce_scatter_block_intra_do_this(const void *sbuf, void *r
     OPAL_OUTPUT_VERBOSE((COLL_TUNED_TRACING_VERBOSE, ompi_coll_tuned_stream,
         "coll:tuned:reduce_scatter_block_intra_do_this selected algorithm %d topo faninout %d segsize %d",
         algorithm, faninout, segsize));
+
+    /* algorithm 0 asks for the fixed decision, which reports the final choice itself */
+    if (algorithm > 0) {
+        mca_coll_base_event_raise_algorithm(comm, MCA_COLL_BASE_EVENT_COMPONENT_TUNED, REDUCESCATTERBLOCK, algorithm,
+                                            rcount, dtype, -1, NULL);
+    }
 
     switch (algorithm) {
     case (0): return ompi_coll_tuned_reduce_scatter_block_intra_dec_fixed(sbuf, rbuf, rcount,

@@ -21,6 +21,7 @@
 
 #include "mpi.h"
 #include "coll_han.h"
+#include "ompi/mca/coll/base/coll_base_events.h"
 #include "coll_han_dynamic.h"
 
 /*
@@ -249,6 +250,7 @@ mca_coll_han_module_destruct(mca_coll_han_module_t * module)
     if (module->cached_low_comms != NULL) {
         for (i = 0; i < COLL_HAN_LOW_MODULES; i++) {
             int cid = module->cached_low_comms[i]->c_index;
+            mca_coll_base_event_helper_remove(module->cached_low_comms[i]);
             ompi_comm_free(&(module->cached_low_comms[i]));
             ompi_communicator_t *tmp = ompi_comm_lookup(cid);
             if (NULL != tmp) {
@@ -262,6 +264,7 @@ mca_coll_han_module_destruct(mca_coll_han_module_t * module)
     if (module->cached_up_comms != NULL) {
         for (i = 0; i < COLL_HAN_UP_MODULES; i++) {
             int cid = module->cached_up_comms[i]->c_index;
+            mca_coll_base_event_helper_remove(module->cached_up_comms[i]);
             ompi_comm_free(&(module->cached_up_comms[i]));
             ompi_communicator_t *tmp = ompi_comm_lookup(cid);
             if (NULL != tmp) {
@@ -319,6 +322,7 @@ mca_coll_han_module_destruct(mca_coll_han_module_t * module)
     for(i=0 ; i<NB_TOPO_LVL ; i++) {
         if(NULL != module->sub_comm[i]) {
             int cid = module->sub_comm[i]->c_index;
+            mca_coll_base_event_helper_remove(module->sub_comm[i]);
             ompi_comm_free(&(module->sub_comm[i]));
             ompi_communicator_t *tmp = ompi_comm_lookup(cid);
             if (NULL != tmp) {

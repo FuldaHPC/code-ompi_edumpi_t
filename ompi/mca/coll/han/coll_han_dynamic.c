@@ -27,6 +27,7 @@
 #include "ompi/mca/coll/han/coll_han_dynamic.h"
 #include "ompi/mca/coll/han/coll_han_algorithms.h"
 #include "ompi/mca/coll/base/coll_base_util.h"
+#include "ompi/mca/coll/base/coll_base_events.h"
 
 #define MCA_COLL_HAN_ANY_MESSAGE_SIZE 0
 
@@ -331,6 +332,20 @@ han_algorithm_is_user_provided(COLLTYPE_T coll_id) {
  * for a msg_size sized message on the comm communicator
  * following the dynamic rules
  */
+
+/* MPI_T event: the HAN variant chosen on the user communicator.  algorithm is the id of
+   the han algorithm tables (coll_han_algorithms.h); 0: default task based algorithm,
+   255: default simple algorithm. */
+static inline void mca_coll_han_event_algorithm(struct ompi_communicator_t *comm, int op,
+                                                int algorithm_id, bool found, size_t msg_bytes,
+                                                int root)
+{
+    int id = (found && algorithm_id > 0) ? algorithm_id
+                                         : (mca_coll_han_component.use_simple_algorithm[op] ? 255 : 0);
+    mca_coll_base_event_raise_algorithm_bytes(comm, MCA_COLL_BASE_EVENT_COMPONENT_HAN, op, id,
+                                              msg_bytes, root, NULL);
+}
+
 static int
 get_algorithm(COLLTYPE_T coll_id,
               size_t msg_size,
@@ -458,6 +473,7 @@ mca_coll_han_allgather_intra_dynamic(const void *sbuf, size_t scount,
                                          comm,
                                          han_module);
         allgather = (mca_coll_base_module_allgather_fn_t)mca_coll_han_algorithm_id_to_fn(ALLGATHER, algorithm_id);
+        mca_coll_han_event_algorithm(comm, ALLGATHER, algorithm_id, NULL != allgather, dtype_size, -1);
         if (NULL == allgather) { /* default behaviour */
             if(mca_coll_han_component.use_simple_algorithm[ALLGATHER]) {
                 allgather = mca_coll_han_allgather_intra_simple;
@@ -695,6 +711,7 @@ mca_coll_han_allreduce_intra_dynamic(const void *sbuf,
              */
             int algorithm_id = get_algorithm(ALLREDUCE, dtype_size, comm, han_module);
             allreduce = (mca_coll_base_module_allreduce_fn_t) mca_coll_han_algorithm_id_to_fn(ALLREDUCE, algorithm_id);
+            mca_coll_han_event_algorithm(comm, ALLREDUCE, algorithm_id, NULL != allreduce, dtype_size, -1);
 
             if (NULL == allreduce) { /* default behaviour */
                 if(mca_coll_han_component.use_simple_algorithm[ALLREDUCE]) {
@@ -800,6 +817,7 @@ mca_coll_han_barrier_intra_dynamic(struct ompi_communicator_t *comm,
          */
         int algorithm_id = get_algorithm(BARRIER, 0, comm, han_module);
         barrier = (mca_coll_base_module_barrier_fn_t) mca_coll_han_algorithm_id_to_fn(BARRIER, algorithm_id);
+        mca_coll_han_event_algorithm(comm, BARRIER, algorithm_id, NULL != barrier, 0, -1);
         if (NULL == barrier) { /* default behaviour*/
             barrier = mca_coll_han_barrier_intra_simple;
         }
@@ -909,6 +927,7 @@ mca_coll_han_bcast_intra_dynamic(void *buff,
                                          comm,
                                          han_module);
         bcast = (mca_coll_base_module_bcast_fn_t)mca_coll_han_algorithm_id_to_fn(BCAST, algorithm_id);
+        mca_coll_han_event_algorithm(comm, BCAST, algorithm_id, NULL != bcast, dtype_size, root);
         if (NULL == bcast) { /* default behaviour */
              if(mca_coll_han_component.use_simple_algorithm[BCAST]) {
                 bcast = mca_coll_han_bcast_intra_simple;
@@ -1030,6 +1049,7 @@ mca_coll_han_gather_intra_dynamic(const void *sbuf, size_t scount,
                                          comm,
                                          han_module);
         gather = (mca_coll_base_module_gather_fn_t) mca_coll_han_algorithm_id_to_fn(GATHER, algorithm_id);
+        mca_coll_han_event_algorithm(comm, GATHER, algorithm_id, NULL != gather, dtype_size, root);
         if (NULL == gather) { /* default behaviour */
             if(mca_coll_han_component.use_simple_algorithm[GATHER]) {
                 gather = mca_coll_han_gather_intra_simple;
@@ -1134,6 +1154,7 @@ int mca_coll_han_gatherv_intra_dynamic(const void *sbuf, size_t scount, struct o
          */
         int algorithm_id = get_algorithm(GATHERV, MCA_COLL_HAN_ANY_MESSAGE_SIZE, comm, han_module);
         gatherv = (mca_coll_base_module_gatherv_fn_t) mca_coll_han_algorithm_id_to_fn(GATHERV, algorithm_id);
+        mca_coll_han_event_algorithm(comm, GATHERV, algorithm_id, NULL != gatherv, 0, root);
         if (NULL == gatherv) { /* default behaviour */
             gatherv = mca_coll_han_gatherv_intra;
         }
@@ -1250,6 +1271,7 @@ mca_coll_han_reduce_intra_dynamic(const void *sbuf,
                                              comm,
                                              han_module);
             reduce = (mca_coll_base_module_reduce_fn_t)mca_coll_han_algorithm_id_to_fn(REDUCE, algorithm_id);
+            mca_coll_han_event_algorithm(comm, REDUCE, algorithm_id, NULL != reduce, dtype_size, root);
             if (NULL == reduce) { /* default behaviour */
                 if(mca_coll_han_component.use_simple_algorithm[REDUCE]) {
                     reduce = mca_coll_han_reduce_intra_simple;
@@ -1372,6 +1394,7 @@ mca_coll_han_scatter_intra_dynamic(const void *sbuf, size_t scount,
                                          comm,
                                          han_module);
         scatter = (mca_coll_base_module_scatter_fn_t)mca_coll_han_algorithm_id_to_fn(SCATTER, algorithm_id);
+        mca_coll_han_event_algorithm(comm, SCATTER, algorithm_id, NULL != scatter, dtype_size, root);
         if (NULL == scatter) { /* default behaviour */
             if(mca_coll_han_component.use_simple_algorithm[SCATTER]) {
                 scatter = mca_coll_han_scatter_intra_simple;
@@ -1494,6 +1517,7 @@ mca_coll_han_scatterv_intra_dynamic(const void *sbuf, ompi_count_array_t scounts
                                          comm,
                                          han_module);
         scatterv = (mca_coll_base_module_scatterv_fn_t)mca_coll_han_algorithm_id_to_fn(SCATTERV, algorithm_id);
+        mca_coll_han_event_algorithm(comm, SCATTERV, algorithm_id, NULL != scatterv, 0, root);
         if (NULL == scatterv) { /* default behaviour */
             scatterv = mca_coll_han_scatterv_intra;
         }
@@ -1611,6 +1635,7 @@ mca_coll_han_alltoall_intra_dynamic(const void *sbuf, size_t scount,
                                          comm,
                                          han_module);
         alltoall = (mca_coll_base_module_alltoall_fn_t)mca_coll_han_algorithm_id_to_fn(ALLTOALL, algorithm_id);
+        mca_coll_han_event_algorithm(comm, ALLTOALL, algorithm_id, NULL != alltoall, dtype_size, -1);
         if (NULL == alltoall) { /* default behaviour */
             alltoall = mca_coll_han_alltoall_using_smsc;
         }
@@ -1725,6 +1750,7 @@ mca_coll_han_alltoallv_intra_dynamic(
                                          comm,
                                          han_module);
         alltoallv = (mca_coll_base_module_alltoallv_fn_t)mca_coll_han_algorithm_id_to_fn(ALLTOALLV, algorithm_id);
+        mca_coll_han_event_algorithm(comm, ALLTOALLV, algorithm_id, NULL != alltoallv, 0, -1);
         if (NULL == alltoallv) { /* default behaviour */
             alltoallv = mca_coll_han_alltoallv_using_smsc;
         }

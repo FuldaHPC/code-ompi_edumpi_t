@@ -20,6 +20,7 @@
  *
  */
 #include "nbc_internal.h"
+#include "ompi/mca/coll/base/coll_base_events.h"
 
 static inline int bcast_sched_binomial(int rank, int p, int root, NBC_Schedule *schedule, void *buffer, size_t count,
                                        MPI_Datatype datatype);
@@ -184,6 +185,12 @@ static int nbc_bcast_init(void *buffer, size_t count, MPI_Datatype datatype, int
 #endif
 
   res = NBC_Schedule_request(schedule, comm, libnbc_module, persistent, request, NULL);
+  if (OPAL_UNLIKELY(OMPI_SUCCESS == res && mca_coll_base_event_algorithm_wanted())) {
+    /* algorithm number as in the libnbc control variable of this operation */
+    static const int alg_id[] = {[NBC_BCAST_LINEAR]=1,[NBC_BCAST_BINOMIAL]=2,[NBC_BCAST_CHAIN]=3,[NBC_BCAST_KNOMIAL]=4};
+    mca_coll_base_event_raise_algorithm(comm, MCA_COLL_BASE_EVENT_COMPONENT_LIBNBC, BCAST, alg_id[alg],
+                                        count, datatype, root, *request);
+  }
   if (OPAL_UNLIKELY(OMPI_SUCCESS != res)) {
     OBJ_RELEASE(schedule);
     return res;

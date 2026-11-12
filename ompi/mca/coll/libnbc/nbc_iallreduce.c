@@ -20,6 +20,7 @@
  *
  */
 #include "nbc_internal.h"
+#include "ompi/mca/coll/base/coll_base_events.h"
 #include "ompi/communicator/communicator.h"
 #include "ompi/datatype/ompi_datatype.h"
 #include "ompi/op/op.h"
@@ -213,6 +214,12 @@ static int nbc_allreduce_init(const void* sendbuf, void* recvbuf, size_t count, 
 #endif
 
   res = NBC_Schedule_request (schedule, comm, libnbc_module, persistent, request, tmpbuf);
+  if (OPAL_UNLIKELY(OMPI_SUCCESS == res && mca_coll_base_event_algorithm_wanted())) {
+    /* algorithm number as in the libnbc control variable of this operation */
+    static const int alg_id[] = {[NBC_ARED_RING]=1,[NBC_ARED_BINOMIAL]=2,[NBC_ARED_REDSCAT_ALLGATHER]=3,[NBC_ARED_RDBL]=4};
+    mca_coll_base_event_raise_algorithm(comm, MCA_COLL_BASE_EVENT_COMPONENT_LIBNBC, ALLREDUCE, alg_id[alg],
+                                        count, datatype, -1, *request);
+  }
   if (OPAL_UNLIKELY(OMPI_SUCCESS != res)) {
     OBJ_RELEASE(schedule);
     free(tmpbuf);

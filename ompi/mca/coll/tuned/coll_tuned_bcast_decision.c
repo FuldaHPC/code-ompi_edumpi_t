@@ -25,6 +25,7 @@
 #include "ompi/mca/coll/base/coll_tags.h"
 #include "ompi/mca/pml/pml.h"
 #include "coll_tuned.h"
+#include "ompi/mca/coll/base/coll_base_events.h"
 #include "ompi/mca/coll/base/coll_base_topo.h"
 #include "ompi/mca/coll/base/coll_base_util.h"
 
@@ -146,6 +147,12 @@ int ompi_coll_tuned_bcast_intra_do_this(void *buf, size_t count,
     OPAL_OUTPUT_VERBOSE((COLL_TUNED_TRACING_VERBOSE, ompi_coll_tuned_stream,
         "coll:tuned:bcast_intra_do_this algorithm %d topo faninout %d segsize %d",
         algorithm, faninout, segsize));
+
+    /* algorithm 0 asks for the fixed decision, which reports the final choice itself */
+    if (algorithm > 0) {
+        mca_coll_base_event_raise_algorithm(comm, MCA_COLL_BASE_EVENT_COMPONENT_TUNED, BCAST, algorithm,
+                                            count, dtype, root, NULL);
+    }
 
     switch (algorithm) {
     case (0):

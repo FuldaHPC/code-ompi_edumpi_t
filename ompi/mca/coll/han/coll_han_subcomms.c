@@ -30,6 +30,7 @@
 
 #include "mpi.h"
 #include "coll_han.h"
+#include "ompi/mca/coll/base/coll_base_events.h"
 #include "coll_han_dynamic.h"
 
 #define HAN_SUBCOM_SAVE_COLLECTIVE(FALLBACKS, COMM, HANM, COLL)              \
@@ -205,6 +206,10 @@ int mca_coll_han_comm_create_new(struct ompi_communicator_t *comm,
         /* cannot create subcommunicators. Return the error upstream */
         goto return_with_error;
     }
+
+    /* tell the MPI_T algorithm event which user communicator the helpers work for */
+    mca_coll_base_event_helper_add(*low_comm, comm, MCA_COLL_BASE_EVENT_LEVEL_INTRA_NODE);
+    mca_coll_base_event_helper_add(*up_comm, comm, MCA_COLL_BASE_EVENT_LEVEL_INTER_NODE);
 
     up_rank = ompi_comm_rank(*up_comm);
 
@@ -474,6 +479,12 @@ int mca_coll_han_comm_create(struct ompi_communicator_t *comm,
      */
     han_module->cached_low_comms = low_comms;
     han_module->cached_up_comms = up_comms;
+    for (int hi = 0; hi < COLL_HAN_LOW_MODULES; hi++) {
+        mca_coll_base_event_helper_add(low_comms[hi], comm, MCA_COLL_BASE_EVENT_LEVEL_INTRA_NODE);
+    }
+    for (int hi = 0; hi < COLL_HAN_UP_MODULES; hi++) {
+        mca_coll_base_event_helper_add(up_comms[hi], comm, MCA_COLL_BASE_EVENT_LEVEL_INTER_NODE);
+    }
     han_module->cached_vranks = vranks;
 
     /* Retain sub-communicators so they survive finalize ordering */
