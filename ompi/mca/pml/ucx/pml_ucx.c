@@ -632,6 +632,7 @@ int mca_pml_ucx_irecv_init(void *buf, size_t count, ompi_datatype_t *datatype,
 
     PML_UCX_MAKE_RECV_TAG(req->tag, req->recv.tag_mask, tag, src, comm);
 
+    ompi_mpit_raise_request_handle(1, comm, &req->ompi, OMPI_REQUEST_KIND_PML_RECV, OMPI_REQUEST_FLAG_PERSISTENT);
     *request = &req->ompi;
     return OMPI_SUCCESS;
 }
@@ -670,6 +671,7 @@ int mca_pml_ucx_irecv(void *buf, size_t count, ompi_datatype_t *datatype,
     PML_UCX_VERBOSE(8, "got request %p", (void*)req);
     /* an immediate match may already have raised recv_complete for this token */
     mca_pml_ucx_event_start(MCA_PML_BASE_EVENT_RECV_START, comm, req, src, tag, count, datatype, 0);
+    ompi_mpit_raise_request_handle(1, comm, req, OMPI_REQUEST_KIND_PML_RECV, 0);
     req->req_mpi_object.comm = comm;
     *request                 = req;
     return OMPI_SUCCESS;
@@ -795,6 +797,7 @@ int mca_pml_ucx_isend_init(const void *buf, size_t count, ompi_datatype_t *datat
         req->datatype = mca_pml_ucx_get_datatype(datatype);
     }
 
+    ompi_mpit_raise_request_handle(1, comm, &req->ompi, OMPI_REQUEST_KIND_PML_SEND, OMPI_REQUEST_FLAG_PERSISTENT);
     *request = &req->ompi;
     return OMPI_SUCCESS;
 }
@@ -966,6 +969,7 @@ int mca_pml_ucx_isend(const void *buf, size_t count, ompi_datatype_t *datatype,
            callback knows neither the communicator nor the peer. */
         mca_pml_ucx_event_start(MCA_PML_BASE_EVENT_SEND_START, comm, req, dst, tag, count,
                                 datatype, mca_pml_ucx_event_mode_flags(mode));
+        ompi_mpit_raise_request_handle(1, comm, req, OMPI_REQUEST_KIND_PML_SEND, 0);
         req->req_mpi_object.comm = comm;
 #if MPI_VERSION >= 4
         if (OPAL_LIKELY(mca_pml_ucx_request_cancel == req->req_cancel)) {
@@ -1224,6 +1228,7 @@ int mca_pml_ucx_imrecv(void *buf, size_t count, ompi_datatype_t *datatype,
     /* the tag of a matched message is not kept: report MPI_ANY_TAG */
     mca_pml_ucx_event_start(MCA_PML_BASE_EVENT_RECV_START, (*message)->comm, req,
                             (*message)->peer, MPI_ANY_TAG, count, datatype, 0);
+    ompi_mpit_raise_request_handle(1, (*message)->comm, req, OMPI_REQUEST_KIND_PML_RECV, 0);
     req->req_mpi_object.comm = (*message)->comm;
     PML_UCX_MESSAGE_RELEASE(message);
     *request = req;

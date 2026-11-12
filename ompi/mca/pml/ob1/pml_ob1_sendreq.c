@@ -114,6 +114,8 @@ static int mca_pml_ob1_send_request_free(struct ompi_request_t** request)
         mca_pml_ob1_event_raise_request(MCA_PML_OB1_EVENT_REQUEST_FREE,
                                         sendreq->req_send.req_base.req_comm,
                                         &sendreq->req_send.req_base);
+        ompi_mpit_raise_request_handle(0, sendreq->req_send.req_base.req_comm, sendreq, OMPI_REQUEST_KIND_PML_SEND,
+                                       sendreq->req_send.req_base.req_ompi.req_persistent ? OMPI_REQUEST_FLAG_PERSISTENT : 0);
 
         if (sendreq->req_send.req_base.req_pml_complete) {
             /* make buffer defined when the request is completed,

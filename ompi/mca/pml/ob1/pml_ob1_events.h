@@ -45,6 +45,7 @@
 #include "opal/mca/base/mca_base_event.h"
 #include "ompi/datatype/ompi_datatype.h"
 #include "ompi/mca/pml/base/pml_base_events.h"
+#include "ompi/runtime/ompi_mpit_events.h"
 #include "ompi/mca/pml/base/pml_base_sendreq.h"
 #include "ompi/mca/pml/base/pml_base_recvreq.h"
 
@@ -266,6 +267,12 @@ static inline void mca_pml_ob1_event_raise_immediate_send(struct ompi_communicat
 static inline void mca_pml_ob1_event_raise_base_start(const mca_pml_base_request_t *req,
                                                       int flags)
 {
+    /* REQUEST_CREATED for a request the user holds: a non-blocking call (not a blocking one, not a restart) */
+    if (!(flags & (MCA_PML_BASE_EVENT_FLAG_BLOCKING | MCA_PML_BASE_EVENT_FLAG_PERSISTENT))) {
+        ompi_mpit_raise_request_handle(1, req->req_comm, req,
+                                       MCA_PML_REQUEST_SEND == req->req_type ? OMPI_REQUEST_KIND_PML_SEND
+                                                                             : OMPI_REQUEST_KIND_PML_RECV, 0);
+    }
     if (MCA_PML_REQUEST_SEND == req->req_type) {
         const mca_pml_base_send_request_t *sreq = (const mca_pml_base_send_request_t *) req;
         switch (sreq->req_send_mode) {

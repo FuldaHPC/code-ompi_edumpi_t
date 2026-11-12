@@ -35,6 +35,7 @@ check_PROGRAMS = \
         mpi_t_event_pml_p2p \
         mpi_t_event_coll_algorithm \
         mpi_t_event_request_state \
+        mpi_t_event_request_handle \
         mpi_t_event_inert_ok \
         mpi_t_event_producers \
         mpi_t_event_reinit \
@@ -103,6 +104,10 @@ mpi_t_event_coll_algorithm_LDADD = $(test_ldadd)
 mpi_t_event_request_state_SOURCES = mpi_t_event_request_state.c
 mpi_t_event_request_state_LDFLAGS = $(OMPI_PKG_CONFIG_LDFLAGS)
 mpi_t_event_request_state_LDADD = $(test_ldadd)
+
+mpi_t_event_request_handle_SOURCES = mpi_t_event_request_handle.c
+mpi_t_event_request_handle_LDFLAGS = $(OMPI_PKG_CONFIG_LDFLAGS)
+mpi_t_event_request_handle_LDADD = $(test_ldadd)
 
 mpi_t_event_inert_ok_SOURCES = mpi_t_event_inert_ok.c
 mpi_t_event_inert_ok_LDFLAGS = $(OMPI_PKG_CONFIG_LDFLAGS)

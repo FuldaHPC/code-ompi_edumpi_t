@@ -772,6 +772,7 @@ int NBC_Schedule_request(NBC_Schedule *schedule, ompi_communicator_t *comm,
   handle->tmpbuf = tmpbuf;
   handle->schedule = schedule;
   *request = (ompi_request_t *) handle;
+  ompi_mpit_raise_request_handle(1, comm, handle, OMPI_REQUEST_KIND_COLL, persistent ? OMPI_REQUEST_FLAG_PERSISTENT : 0);
 
   return OMPI_SUCCESS;
 }

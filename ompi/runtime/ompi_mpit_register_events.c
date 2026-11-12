@@ -30,6 +30,8 @@ ompi_mpit_abi_t ompi_mpit_callback_abi = OMPI_MPIT_ABI_OMPI;
 
 mca_base_event_t *ompi_event_comm_created = NULL;
 mca_base_event_t *ompi_event_comm_freed = NULL;
+mca_base_event_t *ompi_event_request_created = NULL;
+mca_base_event_t *ompi_event_request_freeing = NULL;
 mca_base_event_t *ompi_event_request_activated = NULL;
 mca_base_event_t *ompi_event_request_completed = NULL;
 mca_base_event_t *ompi_event_comm_name_set = NULL;
@@ -130,6 +132,7 @@ void ompi_mpit_register_events(void)
        raise site holding a dangling pointer. */
     ompi_event_comm_created = ompi_event_comm_freed = NULL;
     ompi_event_request_activated = ompi_event_request_completed = NULL;
+    ompi_event_request_created = ompi_event_request_freeing = NULL;
     ompi_event_comm_name_set = NULL;
     ompi_event_initialization = ompi_event_finalization = NULL;
     ompi_event_errhandler_invoked = NULL;
@@ -205,6 +208,15 @@ void ompi_mpit_register_events(void)
                                                         "(MPI_Comm_set_name)",
                                                         OPAL_INFO_LVL_4, MCA_BASE_VAR_BIND_MPI_COMM,
                                                         1, t_cf, o_cf, ompi_src);
+
+        /* Set HANDLE for requests: not bound to an object (a tool cannot bind to a request that does not exist yet). */
+        ompi_event_request_created = register_event(NULL, NULL, "mpi.request_created",
+                                                    "A request visible to the user was created (non-blocking call, "
+                                                    "persistent request)",
+                                                    OPAL_INFO_LVL_4, 4, t_rq, o_rq, ompi_src);
+        ompi_event_request_freeing = register_event(NULL, NULL, "mpi.request_freeing",
+                                                    "A request is about to be released; its token is invalid afterwards",
+                                                    OPAL_INFO_LVL_4, 4, t_rq, o_rq, ompi_src);
 
         /* Request states (set REQUEST of the WG side document), bound to a communicator.  Payload: request handle
            (u64), communicator handle (u64), kind (i32), flags (i32). */

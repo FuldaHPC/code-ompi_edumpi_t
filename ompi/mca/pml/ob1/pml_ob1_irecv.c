@@ -75,6 +75,7 @@ int mca_pml_ob1_irecv_init(void *addr,
      * allows us to detect this state. */
     recvreq->req_recv.req_base.req_pml_complete = true;
 
+    ompi_mpit_raise_request_handle(1, comm, recvreq, OMPI_REQUEST_KIND_PML_RECV, OMPI_REQUEST_FLAG_PERSISTENT);
     *request = (ompi_request_t *) recvreq;
     return OMPI_SUCCESS;
 }

@@ -28,6 +28,9 @@ static int mca_pml_ucx_request_free(ompi_request_t **rptr)
 
     PML_UCX_VERBOSE(9, "free request *%p=%p", (void*)rptr, (void*)req);
 
+    /* UCX does not keep whether this was a send or a receive: the kind of the freeing event is unknown here, a tool
+       takes it from the created event with the same token */
+    ompi_mpit_raise_request_handle(0, req->req_mpi_object.comm, req, OMPI_REQUEST_KIND_UNKNOWN, 0);
     *rptr = MPI_REQUEST_NULL;
     mca_pml_ucx_request_reset(req);
     ucp_request_free(req);
@@ -241,6 +244,10 @@ static int mca_pml_ucx_persistent_request_free(ompi_request_t **rptr)
     mca_pml_ucx_persistent_request_t* preq = (mca_pml_ucx_persistent_request_t*)*rptr;
     ompi_request_t *tmp_req = preq->tmp_req;
 
+    ompi_mpit_raise_request_handle(0, preq->ompi.req_mpi_object.comm, &preq->ompi,
+                                   (preq->flags & MCA_PML_UCX_REQUEST_FLAG_SEND) ? OMPI_REQUEST_KIND_PML_SEND
+                                                                                  : OMPI_REQUEST_KIND_PML_RECV,
+                                   OMPI_REQUEST_FLAG_PERSISTENT);
     preq->ompi.req_state = OMPI_REQUEST_INVALID;
     if (tmp_req != NULL) {
         mca_pml_ucx_persistent_request_detach(preq, tmp_req);

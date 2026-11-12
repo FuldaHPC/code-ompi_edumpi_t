@@ -58,10 +58,20 @@ OMPI_DECLSPEC extern mca_base_event_t *ompi_event_comm_freed;
    OMPI_REQUEST_KIND_*), flags (i32, OMPI_REQUEST_FLAG_*). Raised for non-blocking collective requests (libnbc);
    point-to-point requests additionally report their envelope with the pml_* events. A token is valid from
    REQUEST_ACTIVATED to REQUEST_COMPLETED of one activation. */
+/* Set HANDLE for requests (not bound to an object): ompi.mpi.request_created / ompi.mpi.request_freeing, semantic names
+   REQUEST_CREATED / REQUEST_FREEING. Payload: request (u64, the MPI_Request handle), comm (u64), kind (i32,
+   OMPI_REQUEST_KIND_*), flags (i32, OMPI_REQUEST_FLAG_*). Raised for requests that are visible to the user (non-blocking
+   calls and persistent requests), never for the internal requests of blocking calls. A request that completes
+   inline and is represented by a shared pre-completed request object (the "dummy request") has no created and no
+   freeing event. REQUEST_FREEING is raised before the request is released, so that a request-bound PVAR handle can
+   still be read; the token is invalid afterwards. */
+OMPI_DECLSPEC extern mca_base_event_t *ompi_event_request_created;
+OMPI_DECLSPEC extern mca_base_event_t *ompi_event_request_freeing;
 OMPI_DECLSPEC extern mca_base_event_t *ompi_event_request_activated;
 OMPI_DECLSPEC extern mca_base_event_t *ompi_event_request_completed;
 
 enum {
+    OMPI_REQUEST_KIND_UNKNOWN = -1,   /* only in REQUEST_FREEING, where the owner does not keep the kind */
     OMPI_REQUEST_KIND_PML_SEND = 0,
     OMPI_REQUEST_KIND_PML_RECV = 1,
     OMPI_REQUEST_KIND_COLL = 2,
@@ -96,6 +106,21 @@ OMPI_DECLSPEC extern mca_base_event_t *ompi_event_win_freed;
    instance init, MPI_T_init_thread).  Gated by the master MCA parameter
    mca_base_event_register_producers (default on). */
 OMPI_DECLSPEC void ompi_mpit_register_events(void);
+
+static inline void ompi_mpit_raise_request_handle(int created, struct ompi_communicator_t *comm, const void *request,
+                                                  int kind, int flags)
+{
+    mca_base_event_t *event = created ? ompi_event_request_created : ompi_event_request_freeing;
+
+    if (OPAL_LIKELY(NULL == event || !mca_base_event_active(event))) {
+        return;
+    }
+    ompi_mpit_request_event_t payload = {.request = (uint64_t) (uintptr_t) request,
+                                         .comm = (uint64_t) (uintptr_t) comm,
+                                         .kind = kind,
+                                         .flags = flags};
+    mca_base_event_raise(event, NULL, &payload);
+}
 
 /* raise REQUEST_ACTIVATED (activated != 0) or REQUEST_COMPLETED for a request; free when nobody listens */
 static inline void ompi_mpit_raise_request_state(int activated, struct ompi_communicator_t *comm, const void *request,

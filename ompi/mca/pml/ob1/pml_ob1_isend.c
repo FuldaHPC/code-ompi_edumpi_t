@@ -81,6 +81,7 @@ int mca_pml_ob1_isend_init(const void *buf,
      * allows us to detect this state. */
     sendreq->req_send.req_base.req_pml_complete = true;
 
+    ompi_mpit_raise_request_handle(1, comm, sendreq, OMPI_REQUEST_KIND_PML_SEND, OMPI_REQUEST_FLAG_PERSISTENT);
     *request = (ompi_request_t *) sendreq;
     return OMPI_SUCCESS;
 }

@@ -20,6 +20,7 @@
 #if MPI_VERSION >= 4
 #include "ompi/mca/pml/base/pml_base_sendreq.h"
 #include "ompi/mca/pml/base/pml_base_events.h"
+#include "ompi/runtime/ompi_mpit_events.h"
 #endif
 
 

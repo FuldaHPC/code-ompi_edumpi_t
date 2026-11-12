@@ -696,6 +696,8 @@ request_free(struct ompi_request_t **ompi_req)
         return MPI_ERR_REQUEST;
     }
 
+    ompi_mpit_raise_request_handle(0, request->comm, request, OMPI_REQUEST_KIND_COLL,
+                                   request->super.super.req_persistent ? OMPI_REQUEST_FLAG_PERSISTENT : 0);
     OMPI_COLL_LIBNBC_REQUEST_RETURN(request);
     *ompi_req = MPI_REQUEST_NULL;
 

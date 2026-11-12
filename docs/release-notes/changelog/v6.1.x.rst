@@ -354,3 +354,7 @@ Open MPI version v6.1.0
   non-blocking and persistent collectives of ``libnbc``), and the ``parent`` element of ``ompi.pml_send_start`` /
   ``ompi.pml_recv_start`` now carries the collective request on whose behalf a message is sent, so that a tool can
   attribute the internal messages of a non-blocking collective.
+
+- Added the MPI_T events ``ompi.mpi.request_created`` and ``ompi.mpi.request_freeing``, raised for the requests of
+  non-blocking operations and persistent requests of the ``ob1`` and ``ucx`` PMLs and of ``libnbc``, so that a tool
+  can follow requests that live too short to bind to.

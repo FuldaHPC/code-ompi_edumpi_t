@@ -456,6 +456,29 @@ Collective algorithm event
    communicator and ``comm_size`` the size of the helper communicator. The ``han``
    decision itself has ``level`` 0.
 
+Request lifetime events
+^^^^^^^^^^^^^^^^^^^^^^^
+
+A tool cannot bind to a short-lived request after the call that created it returned: a non-blocking operation can
+complete and its request can be released before the tool holds the handle. These two events tell a tool about every
+request while it exists. They are not bound to an object.
+
+``ompi.mpi.request_created``, ``ompi.mpi.request_freeing``
+   Level 4. Payload (4 elements, as for the request state events below): ``request`` (``uint64``, the
+   ``MPI_Request`` handle), ``comm`` (``uint64``), ``kind`` (``int32``: 0 point-to-point send, 1 point-to-point
+   receive, 2 collective; -1 if the component that frees the request does not keep it, in which case the kind is
+   that of the created event with the same token) and ``flags`` (``int32``, 0x1 persistent). The created event is
+   raised when a non-blocking call creates the request or a persistent request is initialized (``MPI_Send_init``
+   and so on), the freeing event before the request is released, so that an object-bound variable can still be
+   read in the handler; the token is invalid afterwards. A persistent request has one created and one freeing
+   event however often it is started; use the request state events for the activations.
+
+   Raised for the requests of non-blocking calls, persistent requests, and the requests the ``libnbc`` component
+   creates, also those a component creates internally. **Not** raised for the internal requests of blocking calls
+   and **not** for an operation that completes inline and returns a shared, pre-completed request (for example a
+   one-byte ``MPI_Isend``): that request is not an object of its own, has no unique token, and has no events. A
+   tool must accept a request handle it never saw created.
+
 Request state events
 ^^^^^^^^^^^^^^^^^^^^
 
